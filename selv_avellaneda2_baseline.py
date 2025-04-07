@@ -132,14 +132,14 @@ class Trader:
                 'sigma': 2034 * 0.02 / math.sqrt(self.T),
                 'max_position': 50,
                 'k': math.log(2) / 0.01,
-                'gamma' : 0.01/100,
+                'gamma' : 0.1/100,
                 'price_history': deque(maxlen=10)
             },
             'RAINFOREST_RESIN': {
                 'sigma' : 10000 * 0.02 / math.sqrt(self.T),
                 'max_position': 12,
                 'k': math.log(2) / 0.01,
-                'gamma' : 0.01/26,
+                'gamma' : 0.1/26,
                 'price_history': deque(maxlen=10)
             },            
             'SQUID_INK': {
@@ -198,7 +198,7 @@ class Trader:
                 k_values.append(max(k_ask, 0.0001))
         
         # Return average k or default if no valid measurements
-        return np.mean(k_values) if k_values else 0.01  # Fallback to 0.01
+        return np.mean(k_values) if k_values else 0.0001  # Fallback to 0.01
 
 
 
@@ -239,7 +239,7 @@ class Trader:
             realized_vol = self.calculate_volatility(params['price_history'])
             effective_sigma = realized_vol if realized_vol > 0 else params['sigma']
             
-            params['k'] = self.calculate_k(order_depth, mid_price)
+            # params['k'] = self.calculate_k(order_depth, mid_price)
 
             # Spread calculation with dynamic volatility
             time_left = (self.T - state.timestamp)/self.T
@@ -281,6 +281,6 @@ class Trader:
                     orders.append(Order(product, ask_price, -sell_qty))
 
             result[product] = orders
-            logger.print("-----------------------",bid_price, ask_price, rest_price,"------------------------")
+            logger.print("-----------------------",bid_price, ask_price, rest_price,params['k'],"------------------------")
         logger.flush(state, result, 0, "")
         return result, 0, ""
