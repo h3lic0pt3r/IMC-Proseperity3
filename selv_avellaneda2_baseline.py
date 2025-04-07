@@ -170,35 +170,47 @@ class Trader:
         return annualized_vol
 
     def calculate_k(self, order_depth: OrderDepth, mid_price: float) -> float:
-        """Dynamically estimates k using volume decay analysis"""
-        # Extract top 3 levels each side
+        """Estimate the liquidity decay parameter k from order book shape"""
         bids = sorted(order_depth.buy_orders.items(), reverse=True)
         asks = sorted(order_depth.sell_orders.items())
-        
+
         k_values = []
-        
-        # Analyze bid side volume decay
+
+        # Estimate from bid side (buy orders)
         if len(bids) >= 2:
-            p1, v1 = bids[0]
-            p2, v2 = bids[1]
-            delta1 = mid_price - p1
-            delta2 = mid_price - p2
-            if v1 > 0 and v2 > 0 and delta2 > delta1:
-                k_bid = -math.log(v2/v1)/(delta2 - delta1)
-                k_values.append(max(k_bid, 0.0001))  # Prevent negative/zero k
-        
-        # Analyze ask side volume decay
+            (p1, v1), (p2, v2) = bids[0], bids[1]
+            delta1 = abs(mid_price - p1)
+            delta2 = abs(mid_price - p2)
+
+            # Only compute if deltas are non-zero and volumes positive
+            if v1 > 0 and v2 > 0 and delta2 != delta1:
+                try:
+                    k_bid = -math.log(v2 / v1) / (delta2 - delta1)
+                    if 0.01 <= k_bid <= 10:  # Apply bounds to prevent explosion
+                        k_values.append(k_bid)
+                except:
+                    pass
+
+        # Estimate from ask side (sell orders)
         if len(asks) >= 2:
-            p1, v1 = asks[0]
-            p2, v2 = asks[1]
-            delta1 = p1 - mid_price
-            delta2 = p2 - mid_price 
-            if v1 < 0 and v2 < 0 and delta2 > delta1:
-                k_ask = -math.log(abs(v2)/abs(v1))/(delta2 - delta1)
-                k_values.append(max(k_ask, 0.0001))
-        
-        # Return average k or default if no valid measurements
-        return np.mean(k_values) if k_values else 0.0001  # Fallback to 0.01
+            (p1, v1), (p2, v2) = asks[0], asks[1]
+            v1, v2 = abs(v1), abs(v2)  # Normalize volumes
+            delta1 = abs(p1 - mid_price)
+            delta2 = abs(p2 - mid_price)
+
+            if v1 > 0 and v2 > 0 and delta2 != delta1:
+                try:
+                    k_ask = -math.log(v2 / v1) / (delta2 - delta1)
+                    if 0.01 <= k_ask <= 10:
+                        k_values.append(k_ask)
+                except:
+                    pass
+
+        # Return average or fallback
+        if k_values:
+            return float(np.mean(k_values))
+        else:
+            return 1.5  # Reasonable fallback for most liquid books
 
 
 
@@ -239,7 +251,7 @@ class Trader:
             realized_vol = self.calculate_volatility(params['price_history'])
             effective_sigma = realized_vol if realized_vol > 0 else params['sigma']
             
-            # params['k'] = self.calculate_k(order_depth, mid_price)
+            params['k'] = self.calculate_k(order_depth, mid_price)
 
             # Spread calculation with dynamic volatility
             time_left = (self.T - state.timestamp)/self.T
