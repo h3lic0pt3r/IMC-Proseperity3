@@ -151,6 +151,25 @@ class Trader:
             }
         }
 
+    def calculate_volatility(self, price_history: deque) -> float:
+        """Calculates annualized volatility from price history using log returns."""
+        if len(price_history) < 2:
+            return 0  # Not enough data
+        
+        returns = []
+        prev_price = price_history[0]
+        for price in list(price_history)[1:]:
+            returns.append(math.log(price / prev_price))
+            prev_price = price
+            
+        if len(returns) < 1:
+            return 0
+            
+        std_dev = np.std(returns)
+        annualized_vol = std_dev * math.sqrt(252)  # 252 trading days/year
+        return annualized_vol
+
+
     def run(self, state: TradingState):
         result = {}
         for product, order_depth in state.order_depths.items():
@@ -184,12 +203,16 @@ class Trader:
                 
             mid_price = (best_bid + best_ask) / 2
 
-            # CORRECTED FORMULA (uses T - timestamp instead of normalized time)
+            params['price_history'].append(mid_price)
+            realized_vol = self.calculate_volatility(params['price_history'])
+            effective_sigma = realized_vol if realized_vol > 0 else params['sigma']
+            
+            # Spread calculation with dynamic volatility
             time_left = self.T - state.timestamp
-            spread = (params['gamma'] * (params['sigma']**2) * time_left) + \
+            spread = (params['gamma'] * (effective_sigma**2) * time_left) + \
                     (2/params['gamma']) * math.log(1 + params['gamma']/params['k'])
             
-            rest_price = mid_price - current_position * params['gamma'] * (params['sigma']**2) * time_left
+            rest_price = mid_price - current_position * params['gamma'] * (effective_sigma**2) * time_left
             
             bid_price = int(rest_price - spread/2)
             ask_price = int(rest_price + spread/2)
