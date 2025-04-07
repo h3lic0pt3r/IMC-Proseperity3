@@ -129,7 +129,7 @@ class Trader:
         self.T = 100000 #Trading Time
         self.product_data={
             'KELP': {
-                'sigma': 2026 * 0.02 / math.sqrt(self.T),
+                'sigma': 2034 * 0.02 / math.sqrt(self.T),
                 'max_position': 100,
                 'k': math.log(2) / 0.01,
                 'gamma' : 0.01/100,
@@ -143,7 +143,7 @@ class Trader:
                 'price_history': deque(maxlen=10)
             },            
             'SQUID_INK': {
-                'sigma' : 2000 * 0.02 / math.sqrt(self.T),
+                'sigma' : 1834 * 0.02 / math.sqrt(self.T),
                 'max_position': 100,
                 'k': math.log(2) / 0.01,
                 'gamma' : 0.01/100,
@@ -162,10 +162,26 @@ class Trader:
             current_position = state.position.get(product, 0)
             
             # Get order book prices
-            bids = sorted(order_depth.buy_orders.keys(), reverse=True) or [0]
-            asks = sorted(order_depth.sell_orders.keys()) or [float('inf')]
-            best_bid = bids[0]
-            best_ask = asks[0]
+            if order_depth.buy_orders:
+                # Find bid with maximum volume
+                max_bid_volume = max(order_depth.buy_orders.values())
+                candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
+                best_bid = max(candidate_bids)  # Highest price among max volume bids
+            else:
+                best_bid = 0
+
+            if order_depth.sell_orders:
+                # Find ask with maximum volume (using absolute value)
+                max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
+                candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
+                best_ask = min(candidate_asks)  # Lowest price among max volume asks
+            else:
+                best_ask = float('inf')
+
+            # Only proceed if we have valid prices
+            if best_bid == 0 or best_ask == float('inf'):
+                continue
+                
             mid_price = (best_bid + best_ask) / 2
 
             # CORRECTED FORMULA (uses T - timestamp instead of normalized time)
