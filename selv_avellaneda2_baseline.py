@@ -170,47 +170,43 @@ class Trader:
         return annualized_vol
 
     def calculate_k(self, order_depth: OrderDepth, mid_price: float) -> float:
-        """Estimate the liquidity decay parameter k from order book shape"""
-        bids = sorted(order_depth.buy_orders.items(), reverse=True)
-        asks = sorted(order_depth.sell_orders.items())
+        """Estimate the liquidity parameter k using exponential decay model on all available order book levels."""
+        
+        def estimate_k_from_side(levels, side: str) -> float | None:
+            deltas = []
+            log_volumes = []
+            for price, volume in levels:
+                if side == "bid" and volume <= 0:
+                    continue
+                if side == "ask" and volume >= 0:
+                    continue
+                vol = abs(volume)
+                delta = abs(price - mid_price)
+                if vol > 0 and delta > 0:
+                    deltas.append(delta)
+                    log_volumes.append(math.log(vol))
+            
+            if len(deltas) >= 2:
+                # Fit log(volume) = log(V0) - k * delta  -->  y = -k * x + b
+                A = np.vstack([deltas, np.ones(len(deltas))]).T
+                slope, _ = np.linalg.lstsq(A, -np.array(log_volumes), rcond=None)[0]
+                if 0.01 <= slope <= 10:  # Optional sanity check
+                    return slope
+            return None
+
+        bids = sorted(order_depth.buy_orders.items(), reverse=True)[:5]
+        asks = sorted(order_depth.sell_orders.items())[:5]
 
         k_values = []
+        k_bid = estimate_k_from_side(bids, "bid")
+        if k_bid is not None:
+            k_values.append(k_bid)
 
-        # Estimate from bid side (buy orders)
-        if len(bids) >= 2:
-            (p1, v1), (p2, v2) = bids[0], bids[1]
-            delta1 = abs(mid_price - p1)
-            delta2 = abs(mid_price - p2)
+        k_ask = estimate_k_from_side(asks, "ask")
+        if k_ask is not None:
+            k_values.append(k_ask)
 
-            # Only compute if deltas are non-zero and volumes positive
-            if v1 > 0 and v2 > 0 and delta2 != delta1:
-                try:
-                    k_bid = -math.log(v2 / v1) / (delta2 - delta1)
-                    if 0.01 <= k_bid <= 10:  # Apply bounds to prevent explosion
-                        k_values.append(k_bid)
-                except:
-                    pass
-
-        # Estimate from ask side (sell orders)
-        if len(asks) >= 2:
-            (p1, v1), (p2, v2) = asks[0], asks[1]
-            v1, v2 = abs(v1), abs(v2)  # Normalize volumes
-            delta1 = abs(p1 - mid_price)
-            delta2 = abs(p2 - mid_price)
-
-            if v1 > 0 and v2 > 0 and delta2 != delta1:
-                try:
-                    k_ask = -math.log(v2 / v1) / (delta2 - delta1)
-                    if 0.01 <= k_ask <= 10:
-                        k_values.append(k_ask)
-                except:
-                    pass
-
-        # Return average or fallback
-        if k_values:
-            return float(np.mean(k_values))
-        else:
-            return 1.5  # Reasonable fallback for most liquid books
+        return float(np.mean(k_values)) if k_values else 1.5  # Default fallback
 
 
 
