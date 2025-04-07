@@ -132,21 +132,21 @@ class Trader:
                 'sigma': 2034 * 0.02 / math.sqrt(self.T),
                 'max_position': 50,
                 'k': math.log(2) / 0.01,
-                'gamma' : 0.1/100,
+                'gamma' : 0.01/100,
                 'price_history': deque(maxlen=10)
             },
             'RAINFOREST_RESIN': {
                 'sigma' : 10000 * 0.02 / math.sqrt(self.T),
                 'max_position': 12,
                 'k': math.log(2) / 0.01,
-                'gamma' : 0.1/26,
+                'gamma' : 0.01/26,
                 'price_history': deque(maxlen=10)
             },            
             'SQUID_INK': {
                 'sigma' : 1834 * 0.02 / math.sqrt(self.T),
                 'max_position': 50,
                 'k': math.log(2) / 0.01,
-                'gamma' : 0.1/100,
+                'gamma' : 0.01/100,
                 'price_history': deque(maxlen=10)
             }
         }
@@ -166,7 +166,7 @@ class Trader:
             return 0
             
         std_dev = np.std(returns)
-        annualized_vol = std_dev * math.sqrt(252)  # 252 trading days/year
+        annualized_vol = std_dev 
         return annualized_vol
 
     def calculate_k(self, order_depth: OrderDepth, mid_price: float) -> float:
