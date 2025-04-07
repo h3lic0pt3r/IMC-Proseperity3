@@ -185,7 +185,7 @@ class Trader:
             delta2 = mid_price - p2
             if v1 > 0 and v2 > 0 and delta2 > delta1:
                 k_bid = -math.log(v2/v1)/(delta2 - delta1)
-                k_values.append(max(k_bid, 0.001))  # Prevent negative/zero k
+                k_values.append(max(k_bid, 0.0001))  # Prevent negative/zero k
         
         # Analyze ask side volume decay
         if len(asks) >= 2:
@@ -195,7 +195,7 @@ class Trader:
             delta2 = p2 - mid_price 
             if v1 < 0 and v2 < 0 and delta2 > delta1:
                 k_ask = -math.log(abs(v2)/abs(v1))/(delta2 - delta1)
-                k_values.append(max(k_ask, 0.001))
+                k_values.append(max(k_ask, 0.0001))
         
         # Return average k or default if no valid measurements
         return np.mean(k_values) if k_values else 0.01  # Fallback to 0.01
