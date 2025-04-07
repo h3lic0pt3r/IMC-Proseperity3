@@ -146,7 +146,7 @@ class Trader:
                 'sigma' : 1834 * 0.02 / math.sqrt(self.T),
                 'max_position': 50,
                 'k': math.log(2) / 0.01,
-                'gamma' : 0.01/100,
+                'gamma' : 0.1/100,
                 'price_history': deque(maxlen=10)
             }
         }
@@ -208,7 +208,7 @@ class Trader:
             effective_sigma = realized_vol if realized_vol > 0 else params['sigma']
             
             # Spread calculation with dynamic volatility
-            time_left = self.T - state.timestamp
+            time_left = (self.T - state.timestamp)/self.T
             spread = (params['gamma'] * (effective_sigma**2) * time_left) + \
                     (2/params['gamma']) * math.log(1 + params['gamma']/params['k'])
             
