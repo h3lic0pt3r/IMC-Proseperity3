@@ -130,21 +130,21 @@ class Trader:
         self.product_data={
             'KELP': {
                 'sigma': 2034 * 0.02 / math.sqrt(self.T),
-                'max_position': 100,
+                'max_position': 50,
                 'k': math.log(2) / 0.01,
                 'gamma' : 0.01/100,
                 'price_history': deque(maxlen=10)
             },
             'RAINFOREST_RESIN': {
                 'sigma' : 10000 * 0.02 / math.sqrt(self.T),
-                'max_position': 26,
+                'max_position': 12,
                 'k': math.log(2) / 0.01,
                 'gamma' : 0.01/26,
                 'price_history': deque(maxlen=10)
             },            
             'SQUID_INK': {
                 'sigma' : 1834 * 0.02 / math.sqrt(self.T),
-                'max_position': 100,
+                'max_position': 50,
                 'k': math.log(2) / 0.01,
                 'gamma' : 0.01/100,
                 'price_history': deque(maxlen=10)
