@@ -194,34 +194,34 @@ class Trader:
             bid_price = int(rest_price - spread/2)
             ask_price = int(rest_price + spread/2)
 
-            # 1. Take existing liquidity
-            for ask, vol in sorted(order_depth.sell_orders.items()):
-                if ask <= bid_price:
-                    max_buy = min(params['max_position'] - current_position, -vol)
-                    if max_buy > 0:
-                        orders.append(Order(product, ask, max_buy))
-                        current_position += max_buy
+            # # 1. Take existing liquidity
+            # for ask, vol in sorted(order_depth.sell_orders.items()):
+            #     if ask <= bid_price:
+            #         max_buy = min(params['max_position'] - current_position, -vol)
+            #         if max_buy > 0:
+            #             orders.append(Order(product, ask, max_buy))
+            #             current_position += max_buy
 
-            for bid, vol in sorted(order_depth.buy_orders.items(), reverse=True):
-                if bid >= ask_price:
-                    max_sell = min(params['max_position'] + current_position, vol)
-                    if max_sell > 0:
-                        orders.append(Order(product, bid, -max_sell))
-                        current_position -= max_sell
+            # for bid, vol in sorted(order_depth.buy_orders.items(), reverse=True):
+            #     if bid >= ask_price:
+            #         max_sell = min(params['max_position'] + current_position, vol)
+            #         if max_sell > 0:
+            #             orders.append(Order(product, bid, -max_sell))
+            #             current_position -= max_sell
 
-            # 2. Add new limit orders if no matches
-            if not orders:
+            # # 2. Add new limit orders if no matches
+            # if not orders:
                 # Place bids 1 cent below theoretical price
-                bid_price = min(bid_price, best_bid - 1)
-                ask_price = max(ask_price, best_ask + 1)
-                
-                buy_qty = params['max_position'] - current_position
-                sell_qty = params['max_position'] + current_position
-                
-                if buy_qty > 0:
-                    orders.append(Order(product, bid_price, buy_qty))
-                if sell_qty > 0:
-                    orders.append(Order(product, ask_price, -sell_qty))
+            bid_price = min(bid_price, best_bid - 1)
+            ask_price = max(ask_price, best_ask + 1)
+            
+            buy_qty = params['max_position'] - current_position
+            sell_qty = params['max_position'] + current_position
+            
+            if buy_qty > 0:
+                orders.append(Order(product, bid_price, buy_qty))
+            if sell_qty > 0:
+                orders.append(Order(product, ask_price, -sell_qty))
 
             result[product] = orders
             logger.print("-----------------------",bid_price, ask_price, rest_price,"------------------------")
