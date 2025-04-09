@@ -139,7 +139,7 @@ class Trader:
                 'sigma' : 10000 * 0.02 / math.sqrt(self.T),
                 'max_position': 12,
                 'k': math.log(2) / 0.01,
-                'gamma' : 0.8,
+                'gamma' : 0.1/26,
                 'price_history': deque(maxlen=10)
             },            
             # 'SQUID_INK': {
@@ -247,7 +247,7 @@ class Trader:
             realized_vol = self.calculate_volatility(params['price_history'])
             effective_sigma = realized_vol if realized_vol > 0 else params['sigma']
             
-            params['k'] = self.calculate_k(order_depth, mid_price)
+            # params['k'] = self.calculate_k(order_depth, mid_price)
 
             # Spread calculation with dynamic volatility
             time_left = (self.T - state.timestamp)/self.T
