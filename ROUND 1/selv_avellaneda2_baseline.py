@@ -128,27 +128,27 @@ class Trader:
     def __init__(self):
         self.T = 100000 #Trading Time
         self.product_data={
-            # 'KELP': {
-            #     'sigma': 2034 * 0.02 / math.sqrt(self.T),
-            #     'max_position': 50,
-            #     'k': math.log(2) / 0.01,
-            #     'gamma' : 0.01/100,
-            #     'price_history': deque(maxlen=10)
-            # },
+            'KELP': {
+                'sigma': 2034 * 0.02 / math.sqrt(self.T),
+                'max_position': 50,
+                'k': math.log(2) / 0.01,
+                'gamma' : 0.01/100,
+                'price_history': deque(maxlen=10)
+            },
             'RAINFOREST_RESIN': {
                 'sigma' : 10000 * 0.02 / math.sqrt(self.T),
                 'max_position': 12,
                 'k': math.log(2) / 0.01,
-                'gamma' : 0.1/26,
+                'gamma' : 0.01/26,
                 'price_history': deque(maxlen=10)
             },            
-            # 'SQUID_INK': {
-            #     'sigma' : 1834 * 0.02 / math.sqrt(self.T),
-            #     'max_position': 50,
-            #     'k': math.log(2) / 0.01,
-            #     'gamma' : 0.01/100,
-            #     'price_history': deque(maxlen=10)
-            # }
+            'SQUID_INK': {
+                'sigma' : 1834 * 0.02 / math.sqrt(self.T),
+                'max_position': 50,
+                'k': math.log(2) / 0.01,
+                'gamma' : 0.01/100,
+                'price_history': deque(maxlen=10)
+            }
         }
 
     def calculate_volatility(self, price_history: deque) -> float:
@@ -255,54 +255,40 @@ class Trader:
                     (2/params['gamma']) * math.log(1 + params['gamma']/params['k'])
             
             rest_price = mid_price - current_position * params['gamma'] * (effective_sigma**2) * time_left
-           
-            # Multi-level order placement (like Binance code)
-            num_levels = 2  # Number of price levels
-            level_spacing = spread / (2 * num_levels)
             
-            # Clear existing positions if needed
-            remaining_buy = params['max_position'] - current_position
-            remaining_sell = params['max_position'] + current_position
-            
-            # Take favorable liquidity first
+            bid_price = int(rest_price - spread/2)
+            ask_price = int(rest_price + spread/2)
+
+            # 1. Take existing liquidity
             for ask, vol in sorted(order_depth.sell_orders.items()):
-                if remaining_buy <= 0:
-                    break
-                max_buy = min(remaining_buy, -vol)
-                if max_buy > 0:
-                    orders.append(Order(product, ask, max_buy))
-                    remaining_buy -= max_buy
-                    current_position += max_buy
-            
+                if ask <= bid_price:
+                    max_buy = min(params['max_position'] - current_position, -vol)
+                    if max_buy > 0:
+                        orders.append(Order(product, ask, max_buy))
+                        current_position += max_buy
+
             for bid, vol in sorted(order_depth.buy_orders.items(), reverse=True):
-                if remaining_sell <= 0:
-                    break
-                max_sell = min(remaining_sell, vol)
-                if max_sell > 0:
-                    orders.append(Order(product, bid, -max_sell))
-                    remaining_sell -= max_sell
-                    current_position -= max_sell
-            
-            # Place multi-level orders with remaining capacity
-            if remaining_buy > 0 or remaining_sell > 0:
-                for i in range(num_levels):
-                    # Calculate level prices
-                    bid_level_price = int(rest_price - (i + 1) * level_spacing)
-                    ask_level_price = int(rest_price + (i + 1) * level_spacing)
-                    
-                    # Calculate size for each level (decreasing with distance)
-                    level_factor = (num_levels - i) / num_levels
-                    bid_size = int(remaining_buy * level_factor / num_levels)
-                    ask_size = int(remaining_sell * level_factor / num_levels)
-                    
-                    # Place orders if size > 0
-                    if bid_size > 0:
-                        orders.append(Order(product, bid_level_price, bid_size))
-                    if ask_size > 0:
-                        orders.append(Order(product, ask_level_price, -ask_size))
-            
+                if bid >= ask_price:
+                    max_sell = min(params['max_position'] + current_position, vol)
+                    if max_sell > 0:
+                        orders.append(Order(product, bid, -max_sell))
+                        current_position -= max_sell
+
+            # 2. Add new limit orders if no matches
+            if not orders:
+                # Place bids 1 cent below theoretical price
+                bid_price = min(bid_price, best_bid - 1)
+                ask_price = max(ask_price, best_ask + 1)
+                
+                buy_qty = params['max_position'] - current_position
+                sell_qty = params['max_position'] + current_position
+                
+                if buy_qty > 0:
+                    orders.append(Order(product, bid_price, buy_qty))
+                if sell_qty > 0:
+                    orders.append(Order(product, ask_price, -sell_qty))
+
             result[product] = orders
-            logger.print("-----------------------", rest_price, spread, "-----------------------")
-        
+            logger.print("-----------------------",bid_price, ask_price, rest_price,params['k'],"------------------------")
         logger.flush(state, result, 0, "")
         return result, 0, ""
