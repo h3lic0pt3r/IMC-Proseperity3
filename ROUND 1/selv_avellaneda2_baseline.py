@@ -128,27 +128,27 @@ class Trader:
     def __init__(self):
         self.T = 100000 #Trading Time
         self.product_data={
-            'KELP': {
-                'sigma': 2034 * 0.02 / math.sqrt(self.T),
-                'max_position': 50,
-                'k': math.log(2) / 0.01,
-                'gamma' : 0.01/100,
-                'price_history': deque(maxlen=10)
-            },
+            # 'KELP': {
+            #     'sigma': 2034 * 0.02 / math.sqrt(self.T),
+            #     'max_position': 50,
+            #     'k': math.log(2) / 0.01,
+            #     'gamma' : 0.01/100,
+            #     'price_history': deque(maxlen=10)
+            # },
             'RAINFOREST_RESIN': {
                 'sigma' : 10000 * 0.02 / math.sqrt(self.T),
                 'max_position': 12,
                 'k': math.log(2) / 0.01,
-                'gamma' : 0.01/26,
+                'gamma' : 0.8,
                 'price_history': deque(maxlen=10)
             },            
-            'SQUID_INK': {
-                'sigma' : 1834 * 0.02 / math.sqrt(self.T),
-                'max_position': 50,
-                'k': math.log(2) / 0.01,
-                'gamma' : 0.01/100,
-                'price_history': deque(maxlen=10)
-            }
+            # 'SQUID_INK': {
+            #     'sigma' : 1834 * 0.02 / math.sqrt(self.T),
+            #     'max_position': 50,
+            #     'k': math.log(2) / 0.01,
+            #     'gamma' : 0.01/100,
+            #     'price_history': deque(maxlen=10)
+            # }
         }
 
     def calculate_volatility(self, price_history: deque) -> float:
@@ -257,7 +257,7 @@ class Trader:
             rest_price = mid_price - current_position * params['gamma'] * (effective_sigma**2) * time_left
            
             # Multi-level order placement (like Binance code)
-            num_levels = 3  # Number of price levels
+            num_levels = 2  # Number of price levels
             level_spacing = spread / (2 * num_levels)
             
             # Clear existing positions if needed
