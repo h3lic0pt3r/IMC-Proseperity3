@@ -138,8 +138,8 @@ class Trader:
             'RAINFOREST_RESIN': {
                 'sigma' : 10000 * 0.02 / math.sqrt(self.T),
                 'max_position': 50,
-                'k': 10,
-                'gamma' : 0.0001/26,
+                'k': 5,
+                'gamma' : 0.000000001,
                 'price_history': deque(maxlen=10)
             },            
             # 'SQUID_INK': {
