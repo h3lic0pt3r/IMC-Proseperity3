@@ -138,8 +138,8 @@ class Trader:
             'RAINFOREST_RESIN': {
                 'sigma' : 10000 * 0.02 / math.sqrt(self.T),
                 'max_position': 50,
-                'k': 5,
-                'gamma' : 0.000000001,
+                'k': 2,
+                'gamma' : 0.01,
                 'price_history': deque(maxlen=10)
             },            
             # 'SQUID_INK': {
@@ -299,9 +299,15 @@ class Trader:
                     
                     # Place orders if size > 0
                     if bid_size > 0:
-                        orders.append(Order(product, bid_level_price, bid_size))
+                        if bid_level_price in order_depth.buy_orders:
+                            orders.append(Order(product, bid_level_price, order_depth.buy_orders[bid_level_price]))
+                        else:
+                            orders.append(Order(product, bid_level_price, bid_size))
                     if ask_size > 0:
-                        orders.append(Order(product, ask_level_price, -ask_size))
+                        if ask_level_price in order_depth.sell_orders:
+                            orders.append(Order(product, ask_level_price, order_depth.sell_orders[ask_level_price]))
+                        else:
+                            orders.append(Order(product, ask_level_price, ask_size))
 
             result[product] = orders
             logger.print("-----------------------",bid_price, ask_price, rest_price,params['k'],"------------------------")
