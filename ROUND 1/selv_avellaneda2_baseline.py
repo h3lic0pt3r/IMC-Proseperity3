@@ -131,8 +131,8 @@ class Trader:
             # 'KELP': {
             #     'sigma': 2034 * 0.02 / math.sqrt(self.T),
             #     'max_position': 50,
-            #     'k': math.log(2) / 0.01,
-            #     'gamma' : 0.01/100,
+            #     'k': 8,
+            #     'gamma' : 0.000000001,
             #     'price_history': deque(maxlen=10)
             # },
             'RAINFOREST_RESIN': {
@@ -145,8 +145,8 @@ class Trader:
             # 'SQUID_INK': {
             #     'sigma' : 1834 * 0.02 / math.sqrt(self.T),
             #     'max_position': 50,
-            #     'k': math.log(2) / 0.01,
-            #     'gamma' : 0.01/100,
+            #     'k': 5,
+            #     'gamma' : 0.000000001,
             #     'price_history': deque(maxlen=10)
             # }
         }
