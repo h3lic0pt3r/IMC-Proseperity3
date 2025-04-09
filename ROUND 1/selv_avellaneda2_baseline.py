@@ -259,12 +259,22 @@ class Trader:
             bid_price = int(rest_price - spread/2)
             ask_price = int(rest_price + spread/2)
 
+
+            # 2. Add new limit orders if no matches
+            num_levels = 3  # Number of price levels
+            level_spacing = spread / (2 * num_levels)
+            
+            # Clear existing positions if needed
+            remaining_buy = params['max_position'] - current_position
+            remaining_sell = params['max_position'] + current_position
+
             # 1. Take existing liquidity
             for ask, vol in sorted(order_depth.sell_orders.items()):
                 if ask <= bid_price:
                     max_buy = min(params['max_position'] - current_position, -vol)
                     if max_buy > 0:
                         orders.append(Order(product, ask, max_buy))
+                        remaining_buy -= max_buy
                         current_position += max_buy
 
             for bid, vol in sorted(order_depth.buy_orders.items(), reverse=True):
@@ -272,21 +282,26 @@ class Trader:
                     max_sell = min(params['max_position'] + current_position, vol)
                     if max_sell > 0:
                         orders.append(Order(product, bid, -max_sell))
+                        remaining_sell -=max_sell
                         current_position -= max_sell
 
-            # 2. Add new limit orders if no matches
-            if not orders:
-                # Place bids 1 cent below theoretical price
-                bid_price = min(bid_price, best_bid - 1)
-                ask_price = max(ask_price, best_ask + 1)
-                
-                buy_qty = params['max_position'] - current_position
-                sell_qty = params['max_position'] + current_position
-                
-                if buy_qty > 0:
-                    orders.append(Order(product, bid_price, buy_qty))
-                if sell_qty > 0:
-                    orders.append(Order(product, ask_price, -sell_qty))
+
+            if remaining_buy > 0 or remaining_sell > 0:
+                for i in range(num_levels):
+                    # Calculate level prices
+                    bid_level_price = int(rest_price - (i + 1) * level_spacing)
+                    ask_level_price = int(rest_price + (i + 1) * level_spacing)
+                    
+                    # Calculate size for each level (decreasing with distance)
+                    level_factor = (num_levels - i) / num_levels
+                    bid_size = int(remaining_buy * level_factor / num_levels)
+                    ask_size = int(remaining_sell * level_factor / num_levels)
+                    
+                    # Place orders if size > 0
+                    if bid_size > 0:
+                        orders.append(Order(product, bid_level_price, bid_size))
+                    if ask_size > 0:
+                        orders.append(Order(product, ask_level_price, -ask_size))
 
             result[product] = orders
             logger.print("-----------------------",bid_price, ask_price, rest_price,params['k'],"------------------------")
