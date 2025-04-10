@@ -138,8 +138,8 @@ class Trader:
             'RAINFOREST_RESIN': {
                 'sigma' : 10000 * 0.02 / math.sqrt(self.T),
                 'max_position': 50,
-                'k': 2,
-                'gamma' : 0.01,
+                'k': 5,
+                'gamma' : 0.000000001,
                 'price_history': deque(maxlen=10)
             },            
             # 'SQUID_INK': {
@@ -247,22 +247,25 @@ class Trader:
             realized_vol = self.calculate_volatility(params['price_history'])
             effective_sigma = realized_vol if realized_vol > 0 else params['sigma']
             
-            # params['k'] = self.calculate_k(order_depth, mid_price)
+            params['k'] = self.calculate_k(order_depth, mid_price)
 
             # Spread calculation with dynamic volatility
             time_left = (self.T - state.timestamp)/self.T
             spread = (params['gamma'] * (effective_sigma**2) * time_left) + \
-                    (2/params['gamma']) * math.log(1 + params['gamma']/params['k'])
-            
+                    (2/params['gamma']) * math.log(1 + params['gamma']/params['k'])            
+            market_spread = best_ask - best_bid
+
             rest_price = mid_price - current_position * params['gamma'] * (effective_sigma**2) * time_left
             
             bid_price = int(rest_price - spread/2)
             ask_price = int(rest_price + spread/2)
 
+            # inventory_ratio = abs(current_position) / params['max_position']
+            # aggression_factor = 1 + 3.5*inventory_ratio  # ranges from 1 to 3
 
             # 2. Add new limit orders if no matches
             num_levels = 3  # Number of price levels
-            level_spacing = spread / (2 * num_levels)
+            level_spacing = min(spread , market_spread)/(2*num_levels)
             
             # Clear existing positions if needed
             remaining_buy = params['max_position'] - current_position
@@ -299,15 +302,9 @@ class Trader:
                     
                     # Place orders if size > 0
                     if bid_size > 0:
-                        if bid_level_price in order_depth.buy_orders:
-                            orders.append(Order(product, bid_level_price, order_depth.buy_orders[bid_level_price]))
-                        else:
-                            orders.append(Order(product, bid_level_price, bid_size))
+                        orders.append(Order(product, bid_level_price, bid_size))
                     if ask_size > 0:
-                        if ask_level_price in order_depth.sell_orders:
-                            orders.append(Order(product, ask_level_price, order_depth.sell_orders[ask_level_price]))
-                        else:
-                            orders.append(Order(product, ask_level_price, ask_size))
+                        orders.append(Order(product, ask_level_price, -ask_size))
 
             result[product] = orders
             logger.print("-----------------------",bid_price, ask_price, rest_price,params['k'],"------------------------")
