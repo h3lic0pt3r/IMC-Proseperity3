@@ -133,25 +133,41 @@ class Trader:
                 'max_position': 50,
                 'k': 8,
                 'gamma' : 1e-9,
-                'price_history': deque(maxlen=10)
+                'price_history': deque(maxlen=10),
+                'prev_mid' : 2034,               # Smoothed mid-price
+                'alpha' : 0.2,                 # EWMA smoothing
+                'deviation_threshold' : 35,    # Deviation to flag fake
+                'cooldown' : 0,            # Cooldown after fake detection
+                'cooldown_period' : 5,         # Don't quote for these many ticks
+
             },
             'RAINFOREST_RESIN': {
                 'sigma' : 10000 * 0.02 / math.sqrt(self.T),
                 'max_position': 50,
                 'k': 5,     ## smaller implies more volatile market
                 'gamma' : 1e-9,  ##smaller implies more agressive betting
-                'price_history': deque(maxlen=10)
+                'price_history': deque(maxlen=10),
+                'prev_mid' : 10000,               # Smoothed mid-price
+                'alpha' : 0.2,                 # EWMA smoothing
+                'deviation_threshold' : 45,    # Deviation to flag fake
+                'cooldown' : 0,            # Cooldown after fake detection
+                'cooldown_period' : 5,         # Don't quote for these many ticks
             },            
             'SQUID_INK': {
                 'sigma' : 1834 * 0.02 / math.sqrt(self.T),
                 'max_position': 50,
                 'k': 5,
                 'gamma' : 1e-9,
-                'price_history': deque(maxlen=10)
+                'price_history': deque(maxlen=10),
+                'prev_mid' : 1834,               # Smoothed mid-price
+                'alpha' : 0.2,                 # EWMA smoothing
+                'deviation_threshold' : 30,    # Deviation to flag fake
+                'cooldown' : 0,            # Cooldown after fake detection
+                'cooldown_period' : 5,         # Don't quote for these many ticks
             }
         }
 
-    def calculate_volatility(self, price_history: deque) -> float:
+    def calculate_volatility(self, price_history: deque) -> float:              
         """Calculates annualized volatility from price history using log returns."""
         if len(price_history) < 2:
             return 0  # Not enough data
@@ -208,6 +224,25 @@ class Trader:
 
         return float(np.mean(k_values)) if k_values else 1.5  # Default fallback
 
+    def detect_fake(self, product, mid_price): #detects fake drops or spikes and bets against the trend
+        params = self.product_data[product]
+        smoothed = params['prev_mid']
+        ewma_mid = params['alpha'] * mid_price + (1 - params['alpha']) * smoothed
+        params['prev_mid'] = ewma_mid
+        
+        deviation = abs(mid_price - ewma_mid)
+
+        # Cooldown active? Don't quote
+        if params['cooldown'] > 0:
+            params['cooldown'] -= 1
+            return "cooldown", ewma_mid
+
+        # Detect large deviation without trade confirmation (simplified condition)
+        if deviation > params['deviation_threshold'] :
+            params['cooldown'] = params['cooldown_period']
+            return "fake", ewma_mid
+
+        return "normal", ewma_mid
 
 
     def run(self, state: TradingState):
@@ -271,6 +306,27 @@ class Trader:
             # Clear existing positions if needed
             remaining_buy = params['max_position'] - current_position
             remaining_sell = params['max_position'] + current_position
+
+            status, ewma_mid = self.detect_fake(product, mid_price)
+
+            if status == "cooldown":
+                # logger.print(f"{product} in cooldown — not quoting")
+                continue  # Don't quote during cooldown
+
+            elif status == "fake":
+                # logger.print(f"{product} FAKE detected at {mid_price}, smoothed {ewma_mid}")
+                # Reversion bet: fade the move
+                # position = state.position.get(product, 0)
+                
+                if mid_price < ewma_mid:
+                    # Price spiked down — BUY
+                    orders.append(Order(product, int(mid_price), remaining_buy))
+                else:
+                    # Price spiked up — SELL
+                    orders.append(Order(product, int(mid_price), -remaining_sell))
+                result[product] = orders
+                continue  # Skip the Avellaneda-Stoikov quoting
+
 
             # 1. Take existing liquidity
             for ask, vol in sorted(order_depth.sell_orders.items()):
