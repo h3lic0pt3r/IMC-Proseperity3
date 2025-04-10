@@ -128,27 +128,27 @@ class Trader:
     def __init__(self):
         self.T = 100000 #Trading Time
         self.product_data={
-            # 'KELP': {
-            #     'sigma': 2034 * 0.02 / math.sqrt(self.T),
-            #     'max_position': 50,
-            #     'k': 8,
-            #     'gamma' : 0.000000001,
-            #     'price_history': deque(maxlen=10)
-            # },
+            'KELP': {
+                'sigma': 2034 * 0.02 / math.sqrt(self.T),
+                'max_position': 50,
+                'k': 8,
+                'gamma' : 1e-9,
+                'price_history': deque(maxlen=10)
+            },
             'RAINFOREST_RESIN': {
                 'sigma' : 10000 * 0.02 / math.sqrt(self.T),
                 'max_position': 50,
-                'k': 5,
-                'gamma' : 0.000000001,
+                'k': 5,     ## smaller implies more volatile market
+                'gamma' : 1e-9,  ##smaller implies more agressive betting
                 'price_history': deque(maxlen=10)
             },            
-            # 'SQUID_INK': {
-            #     'sigma' : 1834 * 0.02 / math.sqrt(self.T),
-            #     'max_position': 50,
-            #     'k': 5,
-            #     'gamma' : 0.000000001,
-            #     'price_history': deque(maxlen=10)
-            # }
+            'SQUID_INK': {
+                'sigma' : 1834 * 0.02 / math.sqrt(self.T),
+                'max_position': 50,
+                'k': 5,
+                'gamma' : 1e-9,
+                'price_history': deque(maxlen=10)
+            }
         }
 
     def calculate_volatility(self, price_history: deque) -> float:
@@ -248,14 +248,15 @@ class Trader:
             effective_sigma = realized_vol if realized_vol > 0 else params['sigma']
             
             params['k'] = self.calculate_k(order_depth, mid_price)
+            gamma = max(params['gamma']/(1+ 20 * realized_vol), 1e-10)
 
             # Spread calculation with dynamic volatility
             time_left = (self.T - state.timestamp)/self.T
-            spread = (params['gamma'] * (effective_sigma**2) * time_left) + \
-                    (2/params['gamma']) * math.log(1 + params['gamma']/params['k'])            
+            spread = (gamma * (effective_sigma**2) * time_left) + \
+                    (2/gamma) * math.log(1 + gamma/params['k'])            
             market_spread = best_ask - best_bid
 
-            rest_price = mid_price - current_position * params['gamma'] * (effective_sigma**2) * time_left
+            rest_price = mid_price - current_position * gamma * (effective_sigma**2) * time_left
             
             bid_price = int(rest_price - spread/2)
             ask_price = int(rest_price + spread/2)
