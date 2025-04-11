@@ -1,3 +1,6 @@
 imc-prosperity-3-backtester
 back1.log
 ROUND 1/__pycache__/selv_avellaneda2_baseline.cpython-312.pyc
+ROUND 2/avellaneda.log
+ROUND 2/*.log
+*.pyc

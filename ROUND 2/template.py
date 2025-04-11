@@ -131,8 +131,8 @@ logger = Logger()
 
 #########   END OF LOGGER ########
 
-# products = ['KELP', 'RAINFOREST_RESIN', 'SQUID_INK', 'JAMS', 'CROISSANTS', 'DJEMBES', 'PICNIC_BASKET1', 'PICNIC_BASKET2']
-products = ['SQUID_INK', 'JAMS', 'DJEMBES', 'PICNIC_BASKET1', 'PICNIC_BASKET2']
+products = ['KELP', 'RAINFOREST_RESIN', 'SQUID_INK', 'JAMS']
+# products = ['RAINFOREST_RESIN' , 'KELP']
 #########  PRODUCT PARAMS ########
 max_position = {
     'KELP' : 50, 
@@ -193,7 +193,7 @@ mid_price = {
 b_window_size = {
     'KELP' : 20, 
     'RAINFOREST_RESIN' : 20, 
-    'SQUID_INK' : 20, 
+    'SQUID_INK' : 10, 
     'JAMS' : 20, 
     'CROISSANTS' : 20, 
     'DJEMBES' : 20, 
@@ -204,14 +204,14 @@ b_window_size = {
 
 ######## EMA PARAMS ###########
 ema_alpha = {
-    'KELP' : 0.2, 
-    'RAINFOREST_RESIN' : 0.2, 
-    'SQUID_INK' : 0.2, 
-    'JAMS' : 0.2, 
-    'CROISSANTS' : 0.2, 
-    'DJEMBES' : 0.2, 
-    'PICNIC_BASKET1' : 0.2, 
-    'PICNIC_BASKET2' : 0.2, 
+    'KELP' : 0.7, 
+    'RAINFOREST_RESIN' : 0.7, ##
+    'SQUID_INK' : 0.6, ##best value 0.89 for historycal
+    'JAMS' : 0.8, ##best value 0.8 for hystorical
+    'CROISSANTS' : 0.95, 
+    'DJEMBES' : 0.5, 
+    'PICNIC_BASKET1' : 0.5, 
+    'PICNIC_BASKET2' : 0.5, 
 }  
 
 ###### ZSCORE PARAMS ##########
@@ -375,14 +375,14 @@ class Trader:
                                'deviation_threshold' : dict(deviation_threshold)
                                }
         self.product_strategy = {
-                'KELP' : 'AVELLANEDA', 
-                'RAINFOREST_RESIN' : 'AVELLANEDA', 
-                'SQUID_INK' : 'BOLLINGER', 
-                'JAMS' : 'BOLLINGER', 
-                'CROISSANTS' : 'AVELLANEDA', 
-                'DJEMBES' : 'BOLLINGER', 
-                'PICNIC_BASKET1' : 'BOLLINGER', 
-                'PICNIC_BASKET2' : 'BOLLINGER', 
+                'KELP' : 'AVELLANEDA',              ##curentbest IDK
+                'RAINFOREST_RESIN' : 'AVELLANEDA',  ##curentbest AVELLANEDA
+                'SQUID_INK' : 'BOLLINGER',         ##curentbest BOLLINGER
+                'JAMS' : 'AVELLANEDA',              ##curentbest IDK
+                'CROISSANTS' : 'AVELLANEDA',        ##curentbest IDK
+                'DJEMBES' : 'AVELLANEDA',           ##curentbest IDK
+                'PICNIC_BASKET1' : 'AVELLANEDA',    ##curentbest IDK
+                'PICNIC_BASKET2' : 'AVELLANEDA',    ##curentbest IDK
             }
         self.strategy = {
             'AVELLANEDA' : self.avellaneda,
@@ -533,7 +533,8 @@ class Trader:
 
     def bollinger_strategy(self, product, order_depth, current_position, timestamp):
         p = self.product_params
-        
+        orders = []
+
         if order_depth.buy_orders:
             # Find bid with maximum volume
             max_bid_volume = max(order_depth.buy_orders.values())
@@ -562,28 +563,89 @@ class Trader:
             return []
 
         prices = list(p['price_history'][product])
-        mean = np.mean(prices)
+        # mean = np.mean(prices)    #idk using mean is asssss here and giving max loss
         std = np.std(prices)
-        upper = mean + 2 * std
-        lower = mean - 2 * std
+        spread = (1+ 100 * std)* std/2
+        market_spread = best_ask - best_bid
 
-        #logger.print(f"[{product}] Bollinger Bands: mean={mean:.2f}, upper={upper:.2f}, lower={lower:.2f}")
+        # inventory_ratio = abs(current_position) / self.product_params['max_position'][product]
+        # aggression_factor = 1 + 3.5*inventory_ratio  # ranges from 1 to 3
 
-        orders = []
+        # 2. Add new limit orders if no matches
+        num_levels = 3  # Number of price levels
+        level_spacing = min(spread , market_spread)/(2*num_levels)
+        
+        # Clear existing positions if needed
+        # print(self.product_params['max_position'][product])
+        remaining_buy = self.product_params['max_position'][product] - current_position
+        remaining_sell = self.product_params['max_position'][product] + current_position
 
-        logger.print("-----------------------",product, lower,mid_price,upper,"------------------------")
+        status, ewma_mid = self.detect_fake(product, mid_price)
+
+        logger.print(mid_price, ewma_mid)
+        rest_price = ewma_mid
+        
+        bid_price = int(rest_price - spread/2)
+        ask_price = int(rest_price + spread/2)
+        if status == "cooldown":
+            logger.print(f"{product} in cooldown — not quoting")
+            return [] # Don't quote during cooldown
+
+        elif status == "fake":
+            logger.print(f"{product} FAKE detected at {mid_price}, smoothed {ewma_mid}")
+            # Reversion bet: fade the move
+            # position = state.position.get(product, 0)
+            
+            # logger.print("FAKE DETECTED")
+            if mid_price < ewma_mid:
+                # Price spiked down — BUY
+                orders.append(Order(product, int(mid_price), remaining_buy))
+            else:
+                # Price spiked up — SELL
+                orders.append(Order(product, int(mid_price), -remaining_sell))
+
+                return orders
+
+
+        # 1. Take existing liquidity
+        for ask, vol in sorted(order_depth.sell_orders.items()):
+            if ask <= bid_price:
+                max_buy = min(self.product_params['max_position'][product] - current_position, -vol)
+                if max_buy > 0:
+                    orders.append(Order(product, ask, max_buy))
+                    remaining_buy -= max_buy
+                    current_position += max_buy
+
+        for bid, vol in sorted(order_depth.buy_orders.items(), reverse=True):
+            if bid >= ask_price:
+                max_sell = min(self.product_params['max_position'][product] + current_position, vol)
+                if max_sell > 0:
+                    orders.append(Order(product, bid, -max_sell))
+                    remaining_sell -=max_sell
+                    current_position -= max_sell
+
+
+        if remaining_buy > 0 or remaining_sell > 0:
+            for i in range(num_levels):
+                # Calculate level prices
+                bid_level_price = int(rest_price - (i + 1) * level_spacing)
+                ask_level_price = int(rest_price + (i + 1) * level_spacing)
+                
+                # Calculate size for each level (decreasing with distance)
+                level_factor = (num_levels - i) / num_levels
+                bid_size = int(remaining_buy * level_factor / num_levels)
+                ask_size = int(remaining_sell * level_factor / num_levels)
+                
+                # Place orders if size > 0
+                if bid_size > 0:
+                    orders.append(Order(product, bid_level_price, bid_size))
+                if ask_size > 0:
+                    orders.append(Order(product, ask_level_price, -ask_size))
+
+        # logger.print("-----------------------",bid_price, ask_price, rest_price,k,"------------------------")
     
-        if mid_price < lower:
-            qty = p['max_position'][product] - current_position
-            #logger.print(f"[{product}] Bollinger Buy {qty} at {mid_price}")
-            orders.append(Order(product, int(mid_price), qty))
-
-        elif mid_price > upper:
-            qty = p['max_position'][product] + current_position
-            #logger.print(f"[{product}] Bollinger Sell {qty} at {mid_price}")
-            orders.append(Order(product, int(mid_price), -qty))
-
         return orders
+
 
     def breakout_strategy(self, product, order_depth, current_position, timestamp):
         p = self.product_params
@@ -768,7 +830,6 @@ class Trader:
 
     def momentum_strategy(self, product, order_depth, current_position, timestamp):
         p = self.product_params
-        p['price_history'][product].append(mid_price)
         if len(p['price_history'][product]) < 4:
             return []
 
@@ -794,6 +855,7 @@ class Trader:
             
         mid_price = (best_bid + best_ask) / 2
 
+        p['price_history'][product].append(mid_price)
 
         changes = [p['price_history'][product][i] - p['price_history'][product][i - 1] for i in range(1, len(p['price_history'][product]))]
         #logger.print(f"[{product}] Momentum changes: {changes[-4:]}")
