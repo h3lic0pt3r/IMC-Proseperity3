@@ -131,8 +131,8 @@ logger = Logger()
 
 #########   END OF LOGGER ########
 
-products = ['KELP', 'RAINFOREST_RESIN', 'SQUID_INK', 'JAMS']
-# products = ['RAINFOREST_RESIN' , 'KELP']
+# products = ['SQUID_INK', 'KELP', 'RAINFOREST_RESIN', 'CROISSANTS', 'DJEMBES',  'JAMS']
+products = ['RAINFOREST_RESIN' ]
 #########  PRODUCT PARAMS ########
 max_position = {
     'KELP' : 50, 
@@ -206,7 +206,7 @@ b_window_size = {
 ema_alpha = {
     'KELP' : 0.7, 
     'RAINFOREST_RESIN' : 0.7, ##
-    'SQUID_INK' : 0.6, ##best value 0.89 for historycal
+    'SQUID_INK' : 0.89, ##best value 0.89 for historycal
     'JAMS' : 0.8, ##best value 0.8 for hystorical
     'CROISSANTS' : 0.95, 
     'DJEMBES' : 0.5, 
@@ -337,14 +337,25 @@ gamma = {
 }
 
 deviation_threshold = {
-    'KELP' : 35, 
+    'KELP' : 10, 
     'RAINFOREST_RESIN' : 45, 
-    'SQUID_INK' : 30, 
+    'SQUID_INK' : 10, 
     'JAMS' : 40, 
     'CROISSANTS' : 40, 
     'DJEMBES' : 40, 
     'PICNIC_BASKET1' : 40, 
     'PICNIC_BASKET2' : 40, 
+}
+
+prev_status = {
+    'KELP' : 'normal', 
+    'RAINFOREST_RESIN' : 'normal', 
+    'SQUID_INK' : 'normal', 
+    'JAMS' : 'normal', 
+    'CROISSANTS' : 'normal', 
+    'DJEMBES' : 'normal', 
+    'PICNIC_BASKET1' : 'normal', 
+    'PICNIC_BASKET2' : 'normal', 
 }
 ############# END OF PARAMS ###############
 
@@ -372,12 +383,13 @@ class Trader:
                                'mid_price' : dict(mid_price), 
                                'gamma' : dict(gamma), 
                                'alpha' : dict(ema_alpha), 
-                               'deviation_threshold' : dict(deviation_threshold)
+                               'deviation_threshold' : dict(deviation_threshold), 
+                               'prev_status' : dict(prev_status)
                                }
         self.product_strategy = {
                 'KELP' : 'AVELLANEDA',              ##curentbest IDK
                 'RAINFOREST_RESIN' : 'AVELLANEDA',  ##curentbest AVELLANEDA
-                'SQUID_INK' : 'BOLLINGER',         ##curentbest BOLLINGER
+                'SQUID_INK' : 'AVELLANEDA',         ##curentbest BOLLINGER
                 'JAMS' : 'AVELLANEDA',              ##curentbest IDK
                 'CROISSANTS' : 'AVELLANEDA',        ##curentbest IDK
                 'DJEMBES' : 'AVELLANEDA',           ##curentbest IDK
@@ -394,7 +406,8 @@ class Trader:
             'MOMENTUM' : self.momentum_strategy,
             'FAIRPRICE' : self.fair_price_mm_strategy,
             'IMBALANCE' : self.orderbook_imbalance_strategy,
-            'KELTNER' : self.keltner_channel_strategy,
+            'KELTNER' : self.keltner_channel_strategy, 
+            # 'MMCOPY' : self.market_maker_copy
         }
     
     def run(self, state: TradingState):
@@ -403,9 +416,13 @@ class Trader:
         for product in products:
             if product not in state.listings:
                 continue
+            # if product == 'PICNIC_BASKET1':
+            #     order = self.compute_orders_picnic1(state.order_depths, state.position)
+            # else:
             order = self.strategy[self.product_strategy[product]](product, state.order_depths[product], state.position.get(product,0), state.timestamp)
             if len(order) > 0:
                 result[product] = order
+
             # conversions.append(converts)
             
 
@@ -449,12 +466,11 @@ class Trader:
         gamma = max(self.product_params['gamma'][product]/(1+ 20 * realized_vol), 1e-10)
 
         # Spread calculation with dynamic volatility
-        time_left = (self.product_params['trading_time'] - timestamp)/self.product_params['trading_time']
-        spread = (gamma * (effective_sigma**2) * time_left) + \
-                (2/gamma) * math.log(1 + gamma/k)            
+        # time_left = (self.product_params['trading_time'] - timestamp)/self.product_params['trading_time']
+        spread = (2/gamma) * math.log(1 + gamma/k)            
         market_spread = best_ask - best_bid
 
-        rest_price = mid_price - current_position * gamma * (effective_sigma**2) * time_left
+        rest_price = mid_price - current_position * gamma * (effective_sigma**2) 
         
         bid_price = int(rest_price - spread/2)
         ask_price = int(rest_price + spread/2)
@@ -463,7 +479,7 @@ class Trader:
         # aggression_factor = 1 + 3.5*inventory_ratio  # ranges from 1 to 3
 
         # 2. Add new limit orders if no matches
-        num_levels = 3  # Number of price levels
+        num_levels = 3 # Number of price levels
         level_spacing = min(spread , market_spread)/(2*num_levels)
         
         # Clear existing positions if needed
@@ -517,7 +533,7 @@ class Trader:
                 ask_level_price = int(rest_price + (i + 1) * level_spacing)
                 
                 # Calculate size for each level (decreasing with distance)
-                level_factor = (num_levels - i) / num_levels
+                level_factor = ((num_levels - i) / num_levels)**0.1
                 bid_size = int(remaining_buy * level_factor / num_levels)
                 ask_size = int(remaining_sell * level_factor / num_levels)
                 
@@ -530,87 +546,109 @@ class Trader:
         # logger.print("-----------------------",bid_price, ask_price, rest_price,k,"------------------------")
     
         return orders
-
     def bollinger_strategy(self, product, order_depth, current_position, timestamp):
         p = self.product_params
         orders = []
 
+        # --- Best bid/ask detection ---
         if order_depth.buy_orders:
-            # Find bid with maximum volume
             max_bid_volume = max(order_depth.buy_orders.values())
             candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
-            best_bid = max(candidate_bids)  # Highest price among max volume bids
+            best_bid = max(candidate_bids)
         else:
             best_bid = 0
 
         if order_depth.sell_orders:
-            # Find ask with maximum volume (using absolute value)
             max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
             candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
-            best_ask = min(candidate_asks)  # Lowest price among max volume asks
+            best_ask = min(candidate_asks)
         else:
             best_ask = float('inf')
 
-        # logger.print("-----------------------",product,best_ask,best_bid,"------------------------")
-        # Only proceed if we have valid prices
         if best_bid == 0 or best_ask == float('inf'):
             return []
-            
+
         mid_price = (best_bid + best_ask) / 2
         p['price_history'][product].append(mid_price)
-        logger.print("-----------------------",product, len(p['price_history'][product]),p['b_window_size'][product],"------------------------")
+
         if len(p['price_history'][product]) < p['b_window_size'][product]:
             return []
 
         prices = list(p['price_history'][product])
-        # mean = np.mean(prices)    #idk using mean is asssss here and giving max loss
         std = np.std(prices)
-        spread = (1+ 100 * std)* std/2
+        spread = std * (1.4 + std / 5)
         market_spread = best_ask - best_bid
+        level_spacing = min(spread, market_spread) / 6  # 3 levels x 2 sides
 
-        # inventory_ratio = abs(current_position) / self.product_params['max_position'][product]
-        # aggression_factor = 1 + 3.5*inventory_ratio  # ranges from 1 to 3
-
-        # 2. Add new limit orders if no matches
-        num_levels = 3  # Number of price levels
-        level_spacing = min(spread , market_spread)/(2*num_levels)
-        
-        # Clear existing positions if needed
-        # print(self.product_params['max_position'][product])
-        remaining_buy = self.product_params['max_position'][product] - current_position
-        remaining_sell = self.product_params['max_position'][product] + current_position
+        remaining_buy = p['max_position'][product] - current_position
+        remaining_sell = p['max_position'][product] + current_position
 
         status, ewma_mid = self.detect_fake(product, mid_price)
+        logger.print(mid_price, ewma_mid, status)
 
-        logger.print(mid_price, ewma_mid)
-        rest_price = ewma_mid
-        
-        bid_price = int(rest_price - spread/2)
-        ask_price = int(rest_price + spread/2)
+        # --- Trend check ---
+        trend = mid_price - ewma_mid
+        trend_threshold = 2 * std  # adjustable
+
+        disable_buy = trend < -trend_threshold and current_position >= 0
+        disable_sell = trend > trend_threshold and current_position <= 0
+
         if status == "cooldown":
             logger.print(f"{product} in cooldown — not quoting")
-            return [] # Don't quote during cooldown
+            return []
 
         elif status == "fake":
             logger.print(f"{product} FAKE detected at {mid_price}, smoothed {ewma_mid}")
-            # Reversion bet: fade the move
-            # position = state.position.get(product, 0)
-            
-            # logger.print("FAKE DETECTED")
-            if mid_price < ewma_mid:
-                # Price spiked down — BUY
-                orders.append(Order(product, int(mid_price), remaining_buy))
-            else:
-                # Price spiked up — SELL
-                orders.append(Order(product, int(mid_price), -remaining_sell))
 
-                return orders
+            # Only fade fake if price is NOT in strong trend
+            if trend < trend_threshold and mid_price < ewma_mid and remaining_buy > 0:
+                fade_price = int(mid_price)
+                size = int(remaining_buy * 0.4)  # partial fade
+                orders.append(Order(product, fade_price, size))
 
+            elif trend > -trend_threshold and mid_price > ewma_mid and remaining_sell > 0:
+                fade_price = int(mid_price)
+                size = int(remaining_sell * 0.4)
+                orders.append(Order(product, fade_price, -size))
 
-        # 1. Take existing liquidity
+            return orders
+
+        elif status == "snap_back":
+            logger.print(f"{product} SNAPBACK at {mid_price}, smoothed {ewma_mid}")
+
+            # Direction-aware snap trading
+            if mid_price < ewma_mid and remaining_sell > 0:
+                # Rebound expected UP → sell into it
+                rebound_price = int(ewma_mid + 1)
+                size = int(remaining_sell * 0.5)
+                orders.append(Order(product, rebound_price, -size))
+
+            elif mid_price > ewma_mid and remaining_buy > 0:
+                # Rebound expected DOWN → buy into it
+                rebound_price = int(ewma_mid - 1)
+                size = int(remaining_buy * 0.5)
+                orders.append(Order(product, rebound_price, size))
+
+            return orders
+
+        # --- Default quoting path (normal mode) ---
+        rest_price = 0.4 * mid_price + 0.6 * ewma_mid
+        bid_price = int(rest_price - spread / 2)
+        ask_price = int(rest_price + spread / 2)
+
+        # Avoid quoting aggressively in strong trend
+        if trend > trend_threshold and current_position <= 0:
+            logger.print("Uptrend detected — not quoting sell side")
+            ask_price = float('inf')  # disable sell
+
+        if trend < -trend_threshold and current_position >= 0:
+            logger.print("Downtrend detected — not quoting buy side")
+            bid_price = 0  # disable buy
+
+        # --- Take existing liquidity ---
         for ask, vol in sorted(order_depth.sell_orders.items()):
             if ask <= bid_price:
-                max_buy = min(self.product_params['max_position'][product] - current_position, -vol)
+                max_buy = min(remaining_buy, -vol)
                 if max_buy > 0:
                     orders.append(Order(product, ask, max_buy))
                     remaining_buy -= max_buy
@@ -618,34 +656,29 @@ class Trader:
 
         for bid, vol in sorted(order_depth.buy_orders.items(), reverse=True):
             if bid >= ask_price:
-                max_sell = min(self.product_params['max_position'][product] + current_position, vol)
+                max_sell = min(remaining_sell, vol)
                 if max_sell > 0:
                     orders.append(Order(product, bid, -max_sell))
-                    remaining_sell -=max_sell
+                    remaining_sell -= max_sell
                     current_position -= max_sell
 
+        # --- Place layered passive quotes ---
+        num_levels = 3
+        for i in range(num_levels):
+            bid_level_price = int(rest_price - (i + 1) * level_spacing)
+            ask_level_price = int(rest_price + (i + 1) * level_spacing)
 
-        if remaining_buy > 0 or remaining_sell > 0:
-            for i in range(num_levels):
-                # Calculate level prices
-                bid_level_price = int(rest_price - (i + 1) * level_spacing)
-                ask_level_price = int(rest_price + (i + 1) * level_spacing)
-                
-                # Calculate size for each level (decreasing with distance)
-                level_factor = (num_levels - i) / num_levels
-                bid_size = int(remaining_buy * level_factor / num_levels)
-                ask_size = int(remaining_sell * level_factor / num_levels)
-                
-                # Place orders if size > 0
-                if bid_size > 0:
-                    orders.append(Order(product, bid_level_price, bid_size))
-                if ask_size > 0:
-                    orders.append(Order(product, ask_level_price, -ask_size))
+            level_factor = ((num_levels - i) / num_levels) ** 2  # more weight inside
+            bid_size = int(remaining_buy * level_factor / num_levels)
+            ask_size = int(remaining_sell * level_factor / num_levels)
 
-        # logger.print("-----------------------",bid_price, ask_price, rest_price,k,"------------------------")
-    
+            if ask_size > 0 and not disable_sell:
+                orders.append(Order(product, ask_level_price, -ask_size))
+            if bid_size > 0 and not disable_buy:
+                orders.append(Order(product, bid_level_price, bid_size))
+
+        self.product_params['prev_status'][product] = status
         return orders
-
 
     def breakout_strategy(self, product, order_depth, current_position, timestamp):
         p = self.product_params
@@ -970,6 +1003,7 @@ class Trader:
 
         return orders
 
+# def 
 
     # Trader.avellaneda = avellaneda
     ####### END OF STRATEGIES #########
@@ -1004,7 +1038,7 @@ class Trader:
             
         std_dev = np.std(returns)
         return std_dev
-        
+
     def calculate_k(self, order_depth: OrderDepth, mid_price: float) -> float:
         """ Calculates OrderBook Depth / K Param on the fly"""
         
@@ -1055,14 +1089,21 @@ class Trader:
         self.product_params['mid_price'][product] = ewma_mid
         
         deviation = abs(mid_price - ewma_mid)
-
+        logger.print("------", product, deviation, self.product_params['deviation_threshold'][product],deviation > self.product_params['deviation_threshold'][product],"-------")
         # Cooldown active? Don't quote
+        # if self.product_params['prev_status'][product] == "fake" and abs(mid_price - ewma_mid) < std:
+        #     return "snap_reversion"
+
         if self.product_params['cooldown'][product] > 0:
+            
             self.product_params['cooldown'][product] -= 1
+            # if deviation < np.std(self.product_params['price_history'][product]) :
+            #     self.product_params['cooldown'][product] -= self.product_params['cooldown_period'][product] - 1
+            #     # return "snap_back", ewma_mid
             return "cooldown", ewma_mid
 
         # Detect large deviation without trade confirmation (simplified condition)
-        if deviation > self.product_params['deviation_threshold'][product] :
+        if deviation > np.std(self.product_params['price_history'][product])*4.5 and deviation <np.std(self.product_params['price_history'][product])*6.5:
             self.product_params['cooldown'][product] = self.product_params['cooldown_period'][product]
             return "fake", ewma_mid
 
