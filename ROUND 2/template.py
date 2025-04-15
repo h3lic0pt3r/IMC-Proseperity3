@@ -131,8 +131,8 @@ logger = Logger()
 
 #########   END OF LOGGER ########
 
-# products = ['SQUID_INK', 'KELP', 'RAINFOREST_RESIN', 'CROISSANTS', 'DJEMBES',  'JAMS']
-products = ['RAINFOREST_RESIN' ]
+products = ['SQUID_INK', 'KELP', 'RAINFOREST_RESIN', 'CROISSANTS', 'DJEMBES',  'JAMS','PICNIC_BASKET1','PICNIC_BASKET2','VOLCANIC_ROCK','VOLCANIC_ROCK_VOUCHER_10000','VOLCANIC_ROCK_VOUCHER_10250','VOLCANIC_ROCK_VOUCHER_10500','VOLCANIC_ROCK_VOUCHER_9500','VOLCANIC_ROCK_VOUCHER_9750']
+#products = ['RAINFOREST_RESIN' ]
 #########  PRODUCT PARAMS ########
 max_position = {
     'KELP' : 50, 
@@ -143,19 +143,47 @@ max_position = {
     'DJEMBES' : 60, 
     'PICNIC_BASKET1' : 60, 
     'PICNIC_BASKET2' : 100,
+    'VOLCANIC_ROCK': 400,
+    'VOLCANIC_ROCK_VOUCHER_10000': 200,
+    'VOLCANIC_ROCK_VOUCHER_10250': 200,
+    'VOLCANIC_ROCK_VOUCHER_10500': 200,
+    'VOLCANIC_ROCK_VOUCHER_9500': 200,
+    'VOLCANIC_ROCK_VOUCHER_9750': 200
 }
+valuation_strategy={
+    'KELP' : 'vwap', 
+    'RAINFOREST_RESIN' : 'ema', 
+    'SQUID_INK' : 'vwap', 
+    'JAMS' : 'vwap', 
+    'CROISSANTS' : 'ema', 
+    'DJEMBES' : 'vwap', 
+    'PICNIC_BASKET1' : 'ema', 
+    'PICNIC_BASKET2' : 'ema',
+    'VOLCANIC_ROCK': 'vwap',
+    'VOLCANIC_ROCK_VOUCHER_10000': 'vwap',
+    'VOLCANIC_ROCK_VOUCHER_10250': 'vwap',
+    'VOLCANIC_ROCK_VOUCHER_10500': 'vwap',
+    'VOLCANIC_ROCK_VOUCHER_9500': 'mid',
+    'VOLCANIC_ROCK_VOUCHER_9750': 'mid' 
+}
+
 
 price_history = {
     'KELP' : deque(maxlen=20), 
     'RAINFOREST_RESIN' : deque(maxlen=20), 
     'SQUID_INK' : deque(maxlen=20), 
     'JAMS' : deque(maxlen=20), 
-    'CROISSANTS' : deque(maxlen=20), 
+    'CROISSANTS' : deque(maxlen=3), 
     'DJEMBES' : deque(maxlen=20), 
     'PICNIC_BASKET1' : deque(maxlen=20), 
-    'PICNIC_BASKET2' : deque(maxlen=20), 
+    'PICNIC_BASKET2' : deque(maxlen=20),
+    'VOLCANIC_ROCK': deque(maxlen=20),
+    'VOLCANIC_ROCK_VOUCHER_10000': deque(maxlen=20),
+    'VOLCANIC_ROCK_VOUCHER_10250': deque(maxlen=20),
+    'VOLCANIC_ROCK_VOUCHER_10500': deque(maxlen=20),
+    'VOLCANIC_ROCK_VOUCHER_9500': deque(maxlen=20),
+    'VOLCANIC_ROCK_VOUCHER_9750': deque(maxlen=20), 
 }
-
 cooldown = {
     'KELP' : 0, 
     'RAINFOREST_RESIN' : 0, 
@@ -164,7 +192,13 @@ cooldown = {
     'CROISSANTS' : 0, 
     'DJEMBES' : 0, 
     'PICNIC_BASKET1' : 0, 
-    'PICNIC_BASKET2' : 0, 
+    'PICNIC_BASKET2' : 0,
+    'VOLCANIC_ROCK': 0,
+    'VOLCANIC_ROCK_VOUCHER_10000': 0,
+    'VOLCANIC_ROCK_VOUCHER_10250': 0,
+    'VOLCANIC_ROCK_VOUCHER_10500': 0,
+    'VOLCANIC_ROCK_VOUCHER_9500': 0,
+    'VOLCANIC_ROCK_VOUCHER_9750': 0, 
 }
 
 cooldown_period = {
@@ -175,7 +209,13 @@ cooldown_period = {
     'CROISSANTS' : 5, 
     'DJEMBES' : 5, 
     'PICNIC_BASKET1' : 5, 
-    'PICNIC_BASKET2' : 5, 
+    'PICNIC_BASKET2' : 5,
+    'VOLCANIC_ROCK': 4,
+    'VOLCANIC_ROCK_VOUCHER_10000': 5,
+    'VOLCANIC_ROCK_VOUCHER_10250': 5,
+    'VOLCANIC_ROCK_VOUCHER_10500': 5,
+    'VOLCANIC_ROCK_VOUCHER_9500': 5,
+    'VOLCANIC_ROCK_VOUCHER_9750': 5 
 }
 
 mid_price = {
@@ -186,7 +226,13 @@ mid_price = {
     'CROISSANTS' : 0, 
     'DJEMBES' : 0, 
     'PICNIC_BASKET1' : 0, 
-    'PICNIC_BASKET2' : 0, 
+    'PICNIC_BASKET2' : 0,
+    'VOLCANIC_ROCK': 0,
+    'VOLCANIC_ROCK_VOUCHER_10000': 0,
+    'VOLCANIC_ROCK_VOUCHER_10250': 0,
+    'VOLCANIC_ROCK_VOUCHER_10500': 0,
+    'VOLCANIC_ROCK_VOUCHER_9500': 0,
+    'VOLCANIC_ROCK_VOUCHER_9750': 0  
 }
 
 ######## BOLLINGER PARAMS ########
@@ -195,10 +241,16 @@ b_window_size = {
     'RAINFOREST_RESIN' : 20, 
     'SQUID_INK' : 10, 
     'JAMS' : 20, 
-    'CROISSANTS' : 20, 
+    'CROISSANTS' : 3, 
     'DJEMBES' : 20, 
-    'PICNIC_BASKET1' : 20, 
-    'PICNIC_BASKET2' : 20, 
+    'PICNIC_BASKET1' : 3, 
+    'PICNIC_BASKET2' : 3,
+    'VOLCANIC_ROCK': 20,
+    'VOLCANIC_ROCK_VOUCHER_10000': 20,
+    'VOLCANIC_ROCK_VOUCHER_10250': 20,
+    'VOLCANIC_ROCK_VOUCHER_10500': 20,
+    'VOLCANIC_ROCK_VOUCHER_9500': 20,
+    'VOLCANIC_ROCK_VOUCHER_9750': 20  
 }  
 
 
@@ -212,6 +264,12 @@ ema_alpha = {
     'DJEMBES' : 0.5, 
     'PICNIC_BASKET1' : 0.5, 
     'PICNIC_BASKET2' : 0.5, 
+    'VOLCANIC_ROCK': 0.9,
+    'VOLCANIC_ROCK_VOUCHER_10000':0.9,
+    'VOLCANIC_ROCK_VOUCHER_10250': 0.9,
+    'VOLCANIC_ROCK_VOUCHER_10500': 0.9,
+    'VOLCANIC_ROCK_VOUCHER_9500': 0.9,
+    'VOLCANIC_ROCK_VOUCHER_9750': 0.9,
 }  
 
 ###### ZSCORE PARAMS ##########
@@ -333,7 +391,13 @@ gamma = {
     'CROISSANTS' : 1e-9, 
     'DJEMBES' : 1e-9, 
     'PICNIC_BASKET1' : 1e-9, 
-    'PICNIC_BASKET2' : 1e-9, 
+    'PICNIC_BASKET2' : 1e-9,
+    'VOLCANIC_ROCK': 1e-9,
+    'VOLCANIC_ROCK_VOUCHER_10000':1e-9,
+    'VOLCANIC_ROCK_VOUCHER_10250': 1e-9,
+    'VOLCANIC_ROCK_VOUCHER_10500': 1e-9,
+    'VOLCANIC_ROCK_VOUCHER_9500': 1e-9,
+    'VOLCANIC_ROCK_VOUCHER_9750': 1e-9, 
 }
 
 deviation_threshold = {
@@ -342,9 +406,16 @@ deviation_threshold = {
     'SQUID_INK' : 10, 
     'JAMS' : 40, 
     'CROISSANTS' : 40, 
-    'DJEMBES' : 40, 
+    'DJEMBES' : 30, 
     'PICNIC_BASKET1' : 40, 
-    'PICNIC_BASKET2' : 40, 
+    'PICNIC_BASKET2' : 40,
+    'VOLCANIC_ROCK': 40,
+    'VOLCANIC_ROCK_VOUCHER_10000': 40,
+    'VOLCANIC_ROCK_VOUCHER_10250': 40,
+    'VOLCANIC_ROCK_VOUCHER_10500': 40,
+    'VOLCANIC_ROCK_VOUCHER_9500': 40,
+    'VOLCANIC_ROCK_VOUCHER_9750': 40
+     
 }
 
 prev_status = {
@@ -355,7 +426,29 @@ prev_status = {
     'CROISSANTS' : 'normal', 
     'DJEMBES' : 'normal', 
     'PICNIC_BASKET1' : 'normal', 
-    'PICNIC_BASKET2' : 'normal', 
+    'PICNIC_BASKET2' : 'normal',
+    'VOLCANIC_ROCK': 'normal',
+    'VOLCANIC_ROCK_VOUCHER_10000': 'normal',
+    'VOLCANIC_ROCK_VOUCHER_10250': 'normal',
+    'VOLCANIC_ROCK_VOUCHER_10500': 'normal',
+    'VOLCANIC_ROCK_VOUCHER_9500': 'normal',
+    'VOLCANIC_ROCK_VOUCHER_9750': 'normal', 
+}
+ema={
+    'KELP' : None, 
+    'RAINFOREST_RESIN' : None, 
+    'SQUID_INK' : None, 
+    'JAMS' : None, 
+    'CROISSANTS' : None, 
+    'DJEMBES' : None, 
+    'PICNIC_BASKET1' : None, 
+    'PICNIC_BASKET2' : None,
+    'VOLCANIC_ROCK': None,
+    'VOLCANIC_ROCK_VOUCHER_10000': None,
+    'VOLCANIC_ROCK_VOUCHER_10250': None,
+    'VOLCANIC_ROCK_VOUCHER_10500': None,
+    'VOLCANIC_ROCK_VOUCHER_9500': None,
+    'VOLCANIC_ROCK_VOUCHER_9750': None,  
 }
 ############# END OF PARAMS ###############
 
@@ -365,6 +458,8 @@ class Trader:
         """ Storing all the params locally for speed """
         self.products = list(products)
         self.product_params = {'max_position' : dict(max_position), 
+                               'ema':dict(ema),
+                               'valuation_strategy':dict(valuation_strategy),
                                'b_window_size' : dict(b_window_size), 
                                'ema_alpha' : dict(ema_alpha), 
                                'z_max_volume' : dict(z_max_volume), 
@@ -391,10 +486,16 @@ class Trader:
                 'RAINFOREST_RESIN' : 'AVELLANEDA',  ##curentbest AVELLANEDA
                 'SQUID_INK' : 'AVELLANEDA',         ##curentbest BOLLINGER
                 'JAMS' : 'AVELLANEDA',              ##curentbest IDK
-                'CROISSANTS' : 'AVELLANEDA',        ##curentbest IDK
+                'CROISSANTS' : 'BREAKOUT',        ##curentbest IDK
                 'DJEMBES' : 'AVELLANEDA',           ##curentbest IDK
-                'PICNIC_BASKET1' : 'AVELLANEDA',    ##curentbest IDK
-                'PICNIC_BASKET2' : 'AVELLANEDA',    ##curentbest IDK
+                'PICNIC_BASKET1' : 'BOLLINGER',    ##curentbest IDK
+                'PICNIC_BASKET2' : 'BOLLINGER',
+                'VOLCANIC_ROCK': 'AVELLANEDA',
+                'VOLCANIC_ROCK_VOUCHER_10000': 'AVELLANEDA',
+                'VOLCANIC_ROCK_VOUCHER_10250': 'AVELLANEDA',
+                'VOLCANIC_ROCK_VOUCHER_10500': 'AVELLANEDA',
+                'VOLCANIC_ROCK_VOUCHER_9500': 'AVELLANEDA',
+                'VOLCANIC_ROCK_VOUCHER_9750': 'AVELLANEDA',    ##curentbest IDK
             }
         self.strategy = {
             'AVELLANEDA' : self.avellaneda,
@@ -407,7 +508,7 @@ class Trader:
             'FAIRPRICE' : self.fair_price_mm_strategy,
             'IMBALANCE' : self.orderbook_imbalance_strategy,
             'KELTNER' : self.keltner_channel_strategy, 
-            # 'MMCOPY' : self.market_maker_copy
+            'MMCOPY' : self.market_maker_strategy
         }
     
     def run(self, state: TradingState):
@@ -416,8 +517,8 @@ class Trader:
         for product in products:
             if product not in state.listings:
                 continue
-            # if product == 'PICNIC_BASKET1':
-            #     order = self.compute_orders_picnic1(state.order_depths, state.position)
+            if product == 'PICNIC_BASKET1':
+                order = self.compute_orders_picnic1(state)
             # else:
             order = self.strategy[self.product_strategy[product]](product, state.order_depths[product], state.position.get(product,0), state.timestamp)
             if len(order) > 0:
@@ -435,30 +536,8 @@ class Trader:
     def avellaneda(self, product, order_depth, current_position, timestamp):
         orders = []
         
-        # Get order book prices
-        if order_depth.buy_orders:
-            # Find bid with maximum volume
-            max_bid_volume = max(order_depth.buy_orders.values())
-            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
-            best_bid = max(candidate_bids)  # Highest price among max volume bids
-        else:
-            best_bid = 0
+        mid_price, best_ask, best_bid =self.get_mid_price(product,order_depth)
 
-        if order_depth.sell_orders:
-            # Find ask with maximum volume (using absolute value)
-            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
-            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
-            best_ask = min(candidate_asks)  # Lowest price among max volume asks
-        else:
-            best_ask = float('inf')
-
-        # Only proceed if we have valid prices
-        if best_bid == 0 or best_ask == float('inf'):
-            return []
-            
-        mid_price = (best_bid + best_ask) / 2
-
-        self.product_params['price_history'][product].append(mid_price)
         realized_vol = self.calculate_volatility(self.product_params['price_history'][product])
         effective_sigma = realized_vol
         
@@ -549,27 +628,8 @@ class Trader:
     def bollinger_strategy(self, product, order_depth, current_position, timestamp):
         p = self.product_params
         orders = []
+        mid_price, best_ask, best_bid=self.get_mid_price(product,order_depth)
 
-        # --- Best bid/ask detection ---
-        if order_depth.buy_orders:
-            max_bid_volume = max(order_depth.buy_orders.values())
-            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
-            best_bid = max(candidate_bids)
-        else:
-            best_bid = 0
-
-        if order_depth.sell_orders:
-            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
-            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
-            best_ask = min(candidate_asks)
-        else:
-            best_ask = float('inf')
-
-        if best_bid == 0 or best_ask == float('inf'):
-            return []
-
-        mid_price = (best_bid + best_ask) / 2
-        p['price_history'][product].append(mid_price)
 
         if len(p['price_history'][product]) < p['b_window_size'][product]:
             return []
@@ -680,328 +740,8 @@ class Trader:
         self.product_params['prev_status'][product] = status
         return orders
 
-    def breakout_strategy(self, product, order_depth, current_position, timestamp):
-        p = self.product_params
-        p['price_history'][product].append(mid_price)
-        if len(p['price_history'][product]) < p['b_window_size'][product]:
-            return []
-
-        prices = list(p['price_history'][product])[:-1]
-        high = max(prices)
-        low = min(prices)
-
-        if order_depth.buy_orders:
-            # Find bid with maximum volume
-            max_bid_volume = max(order_depth.buy_orders.values())
-            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
-            best_bid = max(candidate_bids)  # Highest price among max volume bids
-        else:
-            best_bid = 0
-
-        if order_depth.sell_orders:
-            # Find ask with maximum volume (using absolute value)
-            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
-            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
-            best_ask = min(candidate_asks)  # Lowest price among max volume asks
-        else:
-            best_ask = float('inf')
-
-        # Only proceed if we have valid prices
-        if best_bid == 0 or best_ask == float('inf'):
-            return []
-            
-        mid_price = (best_bid + best_ask) / 2
-        #logger.print(f"[{product}] Breakout: high={high:.2f}, low={low:.2f}, current={mid_price:.2f}")
-
-        orders = []
-
-        if mid_price > high:
-            qty = min(10, p['max_position'][product] - current_position)
-            #logger.print(f"[{product}] Breakout Buy {qty} at {mid_price}")
-            orders.append(Order(product, int(mid_price), qty))
-        elif mid_price < low:
-            qty = min(10, p['max_position'][product] + current_position)
-            #logger.print(f"[{product}] Breakout Sell {qty} at {mid_price}")
-            orders.append(Order(product, int(mid_price), -qty))
-
-        return orders
-
-    def moving_average_strategy(self, product, order_depth, current_position, timestamp):
-        p = self.product_params
-        p['price_history'][product].append(mid_price)
-        if len(p['price_history'][product]) < p['b_window_size'][product]:
-            return []
-
-        avg = np.mean(p['price_history'][product])
-
-        if order_depth.buy_orders:
-            # Find bid with maximum volume
-            max_bid_volume = max(order_depth.buy_orders.values())
-            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
-            best_bid = max(candidate_bids)  # Highest price among max volume bids
-        else:
-            best_bid = 0
-
-        if order_depth.sell_orders:
-            # Find ask with maximum volume (using absolute value)
-            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
-            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
-            best_ask = min(candidate_asks)  # Lowest price among max volume asks
-        else:
-            best_ask = float('inf')
-
-        # Only proceed if we have valid prices
-        if best_bid == 0 or best_ask == float('inf'):
-            return []
-            
-        mid_price = (best_bid + best_ask) / 2
-        #logger.print(f"[{product}] Moving Average: mean={avg:.2f}, current={mid_price:.2f}")
-
-        orders = []
-
-        if mid_price > avg:
-            qty = min(10, p['max_position'][product] - current_position)
-            #logger.print(f"[{product}] MA Buy {qty} at {mid_price}")
-            orders.append(Order(product, int(mid_price), qty))
-        elif mid_price < avg:
-            qty = min(10, p['max_position'][product] + current_position)
-            #logger.print(f"[{product}] MA Sell {qty} at {mid_price}")
-            orders.append(Order(product, int(mid_price), -qty))
-
-        return orders
-
-    def zscore_strategy(self, product, order_depth, current_position, timestamp):
-        p = self.product_params
-        p['price_history'][product].append(mid_price)
-        if len(p['price_history'][product]) < p['b_window_size'][product]:
-            return []
-
-        if order_depth.buy_orders:
-            # Find bid with maximum volume
-            max_bid_volume = max(order_depth.buy_orders.values())
-            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
-            best_bid = max(candidate_bids)  # Highest price among max volume bids
-        else:
-            best_bid = 0
-
-        if order_depth.sell_orders:
-            # Find ask with maximum volume (using absolute value)
-            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
-            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
-            best_ask = min(candidate_asks)  # Lowest price among max volume asks
-        else:
-            best_ask = float('inf')
-
-        # Only proceed if we have valid prices
-        if best_bid == 0 or best_ask == float('inf'):
-            return []
-            
-        mid_price = (best_bid + best_ask) / 2
-
-        mean = np.mean(p['price_history'][product])
-        std = np.std(p['price_history'][product])
-        z = (mid_price - mean) / std if std else 0
-        #logger.print(f"[{product}] Z-Score: {z:.2f}")
-
-        orders = []
-
-        if z < 1:
-            qty = min(25, p['max_position'][product] - current_position)
-            #logger.print(f"[{product}] Z-Score Buy {qty} at {mid_price}")
-            orders.append(Order(product, int(mid_price), qty))
-        elif z > 1:
-            qty = min(25, p['max_position'][product] + current_position)
-            #logger.print(f"[{product}] Z-Score Sell {qty} at {mid_price}")
-            orders.append(Order(product, int(mid_price), -qty))
-
-        return orders
-
-    def crossover_strategy(self, product, order_depth, current_position, timestamp):
-        p = self.product_params
-        p['price_history'][product].append(mid_price)
-        if len(p['price_history'][product]) < 7:
-            return []
-
-        short = np.mean(list(p['price_history'][product])[-p['cross_windows'][product]['short']:])
-        long = np.mean(list(p['price_history'][product])[-p['cross_windows'][product]['long']:])
-        #logger.print(f"[{product}] Crossover: short={short:.2f}, long={long:.2f}")
-
-        if order_depth.buy_orders:
-            # Find bid with maximum volume
-            max_bid_volume = max(order_depth.buy_orders.values())
-            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
-            best_bid = max(candidate_bids)  # Highest price among max volume bids
-        else:
-            best_bid = 0
-
-        if order_depth.sell_orders:
-            # Find ask with maximum volume (using absolute value)
-            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
-            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
-            best_ask = min(candidate_asks)  # Lowest price among max volume asks
-        else:
-            best_ask = float('inf')
-
-        # Only proceed if we have valid prices
-        if best_bid == 0 or best_ask == float('inf'):
-            return []
-            
-        mid_price = (best_bid + best_ask) / 2
-
-        orders = []
-
-        if short > long:
-            qty = min(10, p['max_position'][product] - current_position)
-            #logger.print(f"[{product}] Crossover Buy {qty} at {mid_price}")
-            orders.append(Order(product, int(mid_price), qty))
-        elif short < long:
-            qty = min(10, p['max_position'][product] + current_position)
-            #logger.print(f"[{product}] Crossover Sell {qty} at {mid_price}")
-            orders.append(Order(product, int(mid_price), -qty))
-
-        return orders
-
-    def momentum_strategy(self, product, order_depth, current_position, timestamp):
-        p = self.product_params
-        if len(p['price_history'][product]) < 4:
-            return []
-
-        if order_depth.buy_orders:
-            # Find bid with maximum volume
-            max_bid_volume = max(order_depth.buy_orders.values())
-            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
-            best_bid = max(candidate_bids)  # Highest price among max volume bids
-        else:
-            best_bid = 0
-
-        if order_depth.sell_orders:
-            # Find ask with maximum volume (using absolute value)
-            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
-            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
-            best_ask = min(candidate_asks)  # Lowest price among max volume asks
-        else:
-            best_ask = float('inf')
-
-        # Only proceed if we have valid prices
-        if best_bid == 0 or best_ask == float('inf'):
-            return []
-            
-        mid_price = (best_bid + best_ask) / 2
-
-        p['price_history'][product].append(mid_price)
-
-        changes = [p['price_history'][product][i] - p['price_history'][product][i - 1] for i in range(1, len(p['price_history'][product]))]
-        #logger.print(f"[{product}] Momentum changes: {changes[-4:]}")
-
-        orders = []
-
-        if changes[-1] > 0 and changes[-2] > 0:
-            qty = min(10, p['max_position'][product] - current_position)
-            p['buy_price'][product] = mid_price
-            #logger.print(f"[{product}] Momentum Buy {qty} at {mid_price}")
-            orders.append(Order(product, int(mid_price), qty))
-        elif all(c < 0 for c in changes[-3:]) or (p['buy_price'][product] and mid_price < 0.8 * p['buy_price'][product]):
-            qty = min(10, p['max_position'][product] + current_position)
-            p['buy_price'][product] = None
-            #logger.print(f"[{product}] Momentum Sell {qty} at {mid_price}")
-            orders.append(Order(product, int(mid_price), -qty))
-
-        return orders
-
-    def fair_price_mm_strategy(self, product, order_depth, current_position, timestamp):
-        best_bid = max(order_depth.buy_orders.keys(), default=0)
-        best_ask = min(order_depth.sell_orders.keys(), default=0)
-        if best_bid == 0 or best_ask == 0:
-            return []
-
-        fair_price = (best_bid + best_ask) / 2
-        #logger.print(f"[{product}] Fair Price MM: best_bid={best_bid}, best_ask={best_ask}, fair_price={fair_price}")
-
-        orders = []
-        max_position = self.product_params[product]['max_position']
-
-        buy_qty = min(10, max_position - current_position)
-        sell_qty = min(10, max_position + current_position)
-
-        orders.append(Order(product, int(fair_price - 1), buy_qty))
-        orders.append(Order(product, int(fair_price + 1), -sell_qty))
-
-        #logger.print(f"[{product}] Market Making Buy {buy_qty} at {int(fair_price - 1)}")
-        #logger.print(f"[{product}] Market Making Sell {sell_qty} at {int(fair_price + 1)}")
-        return orders
-
-    def orderbook_imbalance_strategy(self, product, order_depth, current_position, timestamp):
-        orders = []
-        bids = order_depth.buy_orders
-        asks = order_depth.sell_orders
-        best_bid = max(bids.keys(), default=0)
-        best_ask = min(asks.keys(), default=0)
-        bid_volume = sum(bids.values())
-        ask_volume = sum(abs(v) for v in asks.values())
-        total_volume = bid_volume + ask_volume
-        imbalance = (bid_volume - ask_volume) / total_volume if total_volume != 0 else 0
-        ##logger.print(f"[{product}] Orderbook Imbalance: {imbalance:.2f}")
-
-        max_position = self.product_params[product]['max_position']
-
-        if imbalance > self.product_params['imbalance_thresholds'][product]:
-            volume = min(max_position - current_position, 10)
-            orders.append(Order(product, best_ask, volume))
-            ##logger.print(f"[{product}] Buying {volume} at {best_ask} due to OB imbalance")
-        elif imbalance < -self.product_params['imbalance_thresholds'][product]:
-            volume = min(max_position + current_position, 10)
-            orders.append(Order(product, best_bid, -volume))
-            ##logger.print(f"[{product}] Selling {volume} at {best_bid} due to OB imbalance")
-
-        return orders
-
-    def keltner_channel_strategy(self, product, order_depth, current_position, timestamp):
-        p = self.product_params
-        p['price_history'][product].append(mid_price)
-        if len(p['price_history'][product]) < 10:
-            return []
-
-        ema = sum(p['price_history'][product]) / len(p['price_history'][product])
-        atr = sum(abs(p['price_history'][product][i] - p['price_history'][product][i - 1]) for i in range(1, len(p['price_history'][product]))) / (len(p['price_history'][product]) - 1)
-        upper_band = ema + 1.5 * atr
-        lower_band = ema - 1.5 * atr
-        if order_depth.buy_orders:
-            # Find bid with maximum volume
-            max_bid_volume = max(order_depth.buy_orders.values())
-            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
-            best_bid = max(candidate_bids)  # Highest price among max volume bids
-        else:
-            best_bid = 0
-
-        if order_depth.sell_orders:
-            # Find ask with maximum volume (using absolute value)
-            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
-            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
-            best_ask = min(candidate_asks)  # Lowest price among max volume asks
-        else:
-            best_ask = float('inf')
-
-        # Only proceed if we have valid prices
-        if best_bid == 0 or best_ask == float('inf'):
-            return []
-            
-        mid_price = (best_bid + best_ask) / 2
-        #
-        # #logger.print(f"[{product}] Keltner Channel: EMA={ema:.2f}, ATR={atr:.2f}, Upper={upper_band:.2f}, Lower={lower_band:.2f}")
-
-        orders = []
-        max_position = p['max_position'][product]
-
-        if mid_price < lower_band:
-            qty = min(10, max_position - current_position)
-            orders.append(Order(product, int(mid_price), qty))
-            ##logger.print(f"[{product}] Buy {qty} at {mid_price} (Below Keltner Lower Band)")
-        elif mid_price > upper_band:
-            qty = min(10, max_position + current_position)
-            orders.append(Order(product, int(mid_price), -qty))
-            ##logger.print(f"[{product}] Sell {qty} at {mid_price} (Above Keltner Upper Band)")
-
-        return orders
+    def compute_orders_picnic1(self, state):
+        pass    #hv to define stll
 
 # def 
 
@@ -1021,6 +761,60 @@ class Trader:
 
 
     ###### ALL UTILITY FUNCTIONS #######
+    def get_mid_price(self, product, order_depth, window_size=3):
+        strategy = self.product_params['valuation_strategy'][product]
+        #print(strategy)
+        # if strategy == 'true_value' or strategy == 'mid':
+        if order_depth.buy_orders:
+            max_bid_volume = max(order_depth.buy_orders.values())
+            candidate_bids = {price: vol for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume}
+            best_bid = max(candidate_bids)  # Highest price among max volume bids
+        else:
+            best_bid = 0
+            candidate_bids = {}
+
+        if order_depth.sell_orders:
+            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
+            candidate_asks = {price: vol for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume}
+            best_ask = min(candidate_asks)  # Lowest price among max volume asks
+        else:
+            best_ask = float('inf')
+            candidate_asks = {}
+
+        mid_price = (best_bid + best_ask) >> 1
+
+        if strategy == 'vwap':
+            bid_prices = sorted(candidate_bids.keys(), reverse=True)
+            bid_volumes = [candidate_bids[p] for p in bid_prices]
+            ask_prices = sorted(candidate_asks.keys())
+            ask_volumes = [abs(candidate_asks[p]) for p in ask_prices]
+
+            vwap_bid = self.calculate_vwap(bid_prices, bid_volumes, best_bid)
+            vwap_ask = self.calculate_vwap(ask_prices, ask_volumes, best_ask)
+            mid_price = (vwap_bid + vwap_ask) / 2
+
+        elif strategy == 'ema':
+            alpha = 2 / (window_size + 1)
+            if self.product_params['ema'][product] is None:
+                self.product_params['ema'][product] = mid_price
+            else:
+                self.product_params['ema'][product] = alpha * mid_price + (1 - alpha) * self.product_params['ema'][product]
+            mid_price = self.product_params['ema'][product]
+
+
+        # if strategy == 'mid':
+
+        self.product_params['price_history'][product].append(mid_price)
+        return mid_price, best_ask , best_bid 
+    
+
+    def calculate_vwap(self, prices, volumes, fallback_price):
+        total_volume = sum(volumes)
+        if total_volume == 0:
+            return fallback_price  # fallback in case there's no volume
+        vwap = sum(p * v for p, v in zip(prices, volumes)) / total_volume
+        return vwap
+
 
     def calculate_volatility(self, price_history: deque) -> float:              
         """Calculates volatility / sigma parameter on the fly"""
@@ -1109,31 +903,6 @@ class Trader:
 
         return "normal", ewma_mid
 
-    def volume_weighted_mid(self, order_depth: OrderDepth, product):
-        if order_depth.buy_orders:
-            # Find bid with maximum volume
-            max_bid_volume = max(order_depth.buy_orders.values())
-            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
-            best_bid = max(candidate_bids)  # Highest price among max volume bids
-        else:
-            best_bid = 0
-
-        if order_depth.sell_orders:
-            # Find ask with maximum volume (using absolute value)
-            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
-            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
-            best_ask = min(candidate_asks)  # Lowest price among max volume asks
-        else:
-            best_ask = float('inf')
-
-        # Only proceed if we have valid prices
-        if best_bid == 0 or best_ask == float('inf'):
-            return self.self.product_params['mid_price'][product][product]
-            
-        mid_price = (best_bid + best_ask) / 2
-
-        return mid_price
-
 
 
     # Trader.calculate_volatility = calculate_volatility
@@ -1220,3 +989,381 @@ class Trader:
                     orders.append(Order(product, ask_level_price, -ask_size))
 
     """
+
+
+
+############## ALL SUS STRATS ###############
+
+    def breakout_strategy(self, product, order_depth, current_position, timestamp):
+        p = self.product_params
+        mid_price=self.get_mid_price(product,order_depth)
+        p['price_history'][product].append(mid_price)
+        if len(p['price_history'][product]) < p['b_window_size'][product]:
+            return []
+
+        prices = list(p['price_history'][product])[:-1]
+        high = max(prices)
+        low = min(prices)
+
+        if order_depth.buy_orders:
+            # Find bid with maximum volume
+            max_bid_volume = max(order_depth.buy_orders.values())
+            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
+            best_bid = max(candidate_bids)  # Highest price among max volume bids
+        else:
+            best_bid = 0
+
+        if order_depth.sell_orders:
+            # Find ask with maximum volume (using absolute value)
+            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
+            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
+            best_ask = min(candidate_asks)  # Lowest price among max volume asks
+        else:
+            best_ask = float('inf')
+
+        # Only proceed if we have valid prices
+        if best_bid == 0 or best_ask == float('inf'):
+            return []
+            
+        mid_price = self.get_mid_price(product, order_depth)
+        #logger.print(f"[{product}] Breakout: high={high:.2f}, low={low:.2f}, current={mid_price:.2f}")
+
+        orders = []
+
+        if mid_price > high:
+            qty = min(20, p['max_position'][product] - current_position)
+            #logger.print(f"[{product}] Breakout Buy {qty} at {mid_price}")
+            orders.append(Order(product, int(mid_price), qty))
+        elif mid_price < low:
+            qty = min(20, p['max_position'][product] + current_position)
+            #logger.print(f"[{product}] Breakout Sell {qty} at {mid_price}")
+            orders.append(Order(product, int(mid_price), -qty))
+
+        return orders
+
+    def moving_average_strategy(self, product, order_depth, current_position, timestamp):
+        p = self.product_params
+        mid_price=self.get_mid_price(product,order_depth)
+        p['price_history'][product].append(mid_price)
+        if len(p['price_history'][product]) < p['b_window_size'][product]:
+            return []
+
+        avg = np.mean(p['price_history'][product])
+
+        if order_depth.buy_orders:
+            # Find bid with maximum volume
+            max_bid_volume = max(order_depth.buy_orders.values())
+            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
+            best_bid = max(candidate_bids)  # Highest price among max volume bids
+        else:
+            best_bid = 0
+
+        if order_depth.sell_orders:
+            # Find ask with maximum volume (using absolute value)
+            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
+            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
+            best_ask = min(candidate_asks)  # Lowest price among max volume asks
+        else:
+            best_ask = float('inf')
+
+        # Only proceed if we have valid prices
+        if best_bid == 0 or best_ask == float('inf'):
+            return []
+            
+        mid_price = (best_bid + best_ask) / 2
+        #logger.print(f"[{product}] Moving Average: mean={avg:.2f}, current={mid_price:.2f}")
+
+        orders = []
+
+        if mid_price > avg:
+            qty = min(10, p['max_position'][product] - current_position)
+            #logger.print(f"[{product}] MA Buy {qty} at {mid_price}")
+            orders.append(Order(product, int(mid_price), qty))
+        elif mid_price < avg:
+            qty = min(10, p['max_position'][product] + current_position)
+            #logger.print(f"[{product}] MA Sell {qty} at {mid_price}")
+            orders.append(Order(product, int(mid_price), -qty))
+
+        return orders
+
+    def zscore_strategy(self, product, order_depth, current_position, timestamp):
+        p = self.product_params
+        mid_price=self.get_mid_price(product,order_depth)
+        p['price_history'][product].append(mid_price)
+        if len(p['price_history'][product]) < p['b_window_size'][product]:
+            return []
+
+        if order_depth.buy_orders:
+            # Find bid with maximum volume
+            max_bid_volume = max(order_depth.buy_orders.values())
+            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
+            best_bid = max(candidate_bids)  # Highest price among max volume bids
+        else:
+            best_bid = 0
+
+        if order_depth.sell_orders:
+            # Find ask with maximum volume (using absolute value)
+            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
+            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
+            best_ask = min(candidate_asks)  # Lowest price among max volume asks
+        else:
+            best_ask = float('inf')
+
+        # Only proceed if we have valid prices
+        if best_bid == 0 or best_ask == float('inf'):
+            return []
+            
+        mid_price = (best_bid + best_ask) / 2
+
+        mean = np.mean(p['price_history'][product])
+        std = np.std(p['price_history'][product])
+        z = (mid_price - mean) / std if std else 0
+        #logger.print(f"[{product}] Z-Score: {z:.2f}")
+
+        orders = []
+
+        if z < 1:
+            qty = min(25, p['max_position'][product] - current_position)
+            #logger.print(f"[{product}] Z-Score Buy {qty} at {mid_price}")
+            orders.append(Order(product, int(mid_price), qty))
+        elif z > 1:
+            qty = min(25, p['max_position'][product] + current_position)
+            #logger.print(f"[{product}] Z-Score Sell {qty} at {mid_price}")
+            orders.append(Order(product, int(mid_price), -qty))
+
+        return orders
+
+    def crossover_strategy(self, product, order_depth, current_position, timestamp):
+        p = self.product_params
+        mid_price=self.get_mid_price(product,order_depth)
+        p['price_history'][product].append(mid_price)
+        if len(p['price_history'][product]) < 7:
+            return []
+
+        short = np.mean(list(p['price_history'][product])[-p['cross_windows'][product]['short']:])
+        long = np.mean(list(p['price_history'][product])[-p['cross_windows'][product]['long']:])
+        #logger.print(f"[{product}] Crossover: short={short:.2f}, long={long:.2f}")
+
+        if order_depth.buy_orders:
+            # Find bid with maximum volume
+            max_bid_volume = max(order_depth.buy_orders.values())
+            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
+            best_bid = max(candidate_bids)  # Highest price among max volume bids
+        else:
+            best_bid = 0
+
+        if order_depth.sell_orders:
+            # Find ask with maximum volume (using absolute value)
+            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
+            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
+            best_ask = min(candidate_asks)  # Lowest price among max volume asks
+        else:
+            best_ask = float('inf')
+
+        # Only proceed if we have valid prices
+        if best_bid == 0 or best_ask == float('inf'):
+            return []
+            
+        mid_price = (best_bid + best_ask) / 2
+
+        orders = []
+
+        if short > long:
+            qty = min(10, p['max_position'][product] - current_position)
+            #logger.print(f"[{product}] Crossover Buy {qty} at {mid_price}")
+            orders.append(Order(product, int(mid_price), qty))
+        elif short < long:
+            qty = min(10, p['max_position'][product] + current_position)
+            #logger.print(f"[{product}] Crossover Sell {qty} at {mid_price}")
+            orders.append(Order(product, int(mid_price), -qty))
+
+        return orders
+
+    def momentum_strategy(self, product, order_depth, current_position, timestamp):
+        p = self.product_params
+        if len(p['price_history'][product]) < 4:
+            return []
+        mid_price=self.get_mid_price(product,order_depth)
+
+        if order_depth.buy_orders:
+            # Find bid with maximum volume
+            max_bid_volume = max(order_depth.buy_orders.values())
+            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
+            best_bid = max(candidate_bids)  # Highest price among max volume bids
+        else:
+            best_bid = 0
+
+        if order_depth.sell_orders:
+            # Find ask with maximum volume (using absolute value)
+            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
+            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
+            best_ask = min(candidate_asks)  # Lowest price among max volume asks
+        else:
+            best_ask = float('inf')
+
+        # Only proceed if we have valid prices
+        if best_bid == 0 or best_ask == float('inf'):
+            return []
+            
+        mid_price = (best_bid + best_ask) / 2
+
+        p['price_history'][product].append(mid_price)
+
+        changes = [p['price_history'][product][i] - p['price_history'][product][i - 1] for i in range(1, len(p['price_history'][product]))]
+        #logger.print(f"[{product}] Momentum changes: {changes[-4:]}")
+
+        orders = []
+
+        if changes[-1] > 0 and changes[-2] > 0:
+            qty = min(10, p['max_position'][product] - current_position)
+            p['buy_price'][product] = mid_price
+            #logger.print(f"[{product}] Momentum Buy {qty} at {mid_price}")
+            orders.append(Order(product, int(mid_price), qty))
+        elif all(c < 0 for c in changes[-3:]) or (p['buy_price'][product] and mid_price < 0.8 * p['buy_price'][product]):
+            qty = min(10, p['max_position'][product] + current_position)
+            p['buy_price'][product] = None
+            #logger.print(f"[{product}] Momentum Sell {qty} at {mid_price}")
+            orders.append(Order(product, int(mid_price), -qty))
+
+        return orders
+
+    def fair_price_mm_strategy(self, product, order_depth, current_position, timestamp):
+        best_bid = max(order_depth.buy_orders.keys(), default=0)
+        best_ask = min(order_depth.sell_orders.keys(), default=0)
+        if best_bid == 0 or best_ask == 0:
+            return []
+
+        fair_price = (best_bid + best_ask) / 2
+        #logger.print(f"[{product}] Fair Price MM: best_bid={best_bid}, best_ask={best_ask}, fair_price={fair_price}")
+
+        orders = []
+        max_position = self.product_params['max_position'][product]
+
+        buy_qty = min(10, max_position - current_position)
+        sell_qty = min(10, max_position + current_position)
+
+        orders.append(Order(product, int(fair_price - 1), buy_qty))
+        orders.append(Order(product, int(fair_price + 1), -sell_qty))
+
+        #logger.print(f"[{product}] Market Making Buy {buy_qty} at {int(fair_price - 1)}")
+        #logger.print(f"[{product}] Market Making Sell {sell_qty} at {int(fair_price + 1)}")
+        return orders
+
+    def orderbook_imbalance_strategy(self, product, order_depth, current_position, timestamp):
+        orders = []
+        mid_price=self.get_mid_price(product,order_depth)
+        bids = order_depth.buy_orders
+        asks = order_depth.sell_orders
+        best_bid = max(bids.keys(), default=0)
+        best_ask = min(asks.keys(), default=0)
+        bid_volume = sum(bids.values())
+        ask_volume = sum(abs(v) for v in asks.values())
+        total_volume = bid_volume + ask_volume
+        imbalance = (bid_volume - ask_volume) / total_volume if total_volume != 0 else 0
+        ##logger.print(f"[{product}] Orderbook Imbalance: {imbalance:.2f}")
+
+        max_position = self.product_params[product]['max_position']
+
+        if imbalance > self.product_params['imbalance_thresholds'][product]:
+            volume = min(max_position - current_position, 10)
+            orders.append(Order(product, best_ask, volume))
+            ##logger.print(f"[{product}] Buying {volume} at {best_ask} due to OB imbalance")
+        elif imbalance < -self.product_params['imbalance_thresholds'][product]:
+            volume = min(max_position + current_position, 10)
+            orders.append(Order(product, best_bid, -volume))
+            ##logger.print(f"[{product}] Selling {volume} at {best_bid} due to OB imbalance")
+
+        return orders
+
+    def keltner_channel_strategy(self, product, order_depth, current_position, timestamp):
+        p = self.product_params
+        mid_price=self.get_mid_price(product,order_depth)
+        p['price_history'][product].append(mid_price)
+        if len(p['price_history'][product]) < 10:
+            return []
+
+        ema = sum(p['price_history'][product]) / len(p['price_history'][product])
+        atr = sum(abs(p['price_history'][product][i] - p['price_history'][product][i - 1]) for i in range(1, len(p['price_history'][product]))) / (len(p['price_history'][product]) - 1)
+        upper_band = ema + 1.5 * atr
+        lower_band = ema - 1.5 * atr
+        if order_depth.buy_orders:
+            # Find bid with maximum volume
+            max_bid_volume = max(order_depth.buy_orders.values())
+            candidate_bids = [price for price, vol in order_depth.buy_orders.items() if vol == max_bid_volume]
+            best_bid = max(candidate_bids)  # Highest price among max volume bids
+        else:
+            best_bid = 0
+
+        if order_depth.sell_orders:
+            # Find ask with maximum volume (using absolute value)
+            max_ask_volume = max(abs(vol) for vol in order_depth.sell_orders.values())
+            candidate_asks = [price for price, vol in order_depth.sell_orders.items() if abs(vol) == max_ask_volume]
+            best_ask = min(candidate_asks)  # Lowest price among max volume asks
+        else:
+            best_ask = float('inf')
+
+        # Only proceed if we have valid prices
+        if best_bid == 0 or best_ask == float('inf'):
+            return []
+            
+        mid_price = (best_bid + best_ask) / 2
+        #
+        # #logger.print(f"[{product}] Keltner Channel: EMA={ema:.2f}, ATR={atr:.2f}, Upper={upper_band:.2f}, Lower={lower_band:.2f}")
+
+        orders = []
+        max_position = p['max_position'][product]
+
+        if mid_price < lower_band:
+            qty = min(10, max_position - current_position)
+            orders.append(Order(product, int(mid_price), qty))
+            ##logger.print(f"[{product}] Buy {qty} at {mid_price} (Below Keltner Lower Band)")
+        elif mid_price > upper_band:
+            qty = min(10, max_position + current_position)
+            orders.append(Order(product, int(mid_price), -qty))
+            ##logger.print(f"[{product}] Sell {qty} at {mid_price} (Above Keltner Upper Band)")
+
+        return orders
+    def market_maker_strategy(self, product, order_depth, current_position, timestamp):
+        p = self.product_params
+        orders = []
+        mid_price=self.get_mid_price(product,order_depth)
+        price_history = list(p['price_history'][product])
+        price_history.append(mid_price)
+        if len(price_history) < 5:
+            return []
+
+        position = current_position
+        max_position = p.get('max_position', 50)
+
+        # === Dynamic Spread based on volatility ===
+        recent_returns = [price_history[-i] - price_history[-i - 1] for i in range(1, 10)]
+        volatility = max(1, statistics.stdev(recent_returns))  # avoid zero
+        base_spread = p['mm_spread'][product]
+        spread = base_spread + 0.05 * volatility  # wider in volatility
+
+        # === Dynamic Skew based on inventory and trend ===
+        skew_sensitivity = p['mm_sensitivity'][product]
+        price_trend = sum(recent_returns[-4:])
+        skew = skew_sensitivity * position - 0.2 * price_trend
+
+        # === Fixed Order Size ===
+        order_size = 10
+
+        # Calculate bid/ask prices
+        bid_price = int(mid_price - spread / 2 - skew)
+        ask_price = int(mid_price + spread / 2 - skew)
+
+        # Limit quantity to not exceed max position
+        bid_qty = min(order_size, max_position - position)
+        ask_qty = min(order_size, max_position + position)
+
+        if bid_qty > 0:
+            #print(f"[{product}] MM Buy {bid_qty} @ {bid_price} (skew: {skew:.2f}, spread: {spread:.2f})")
+            orders.append(Order(product, bid_price, bid_qty))
+
+        if ask_qty > 0:
+            #print(f"[{product}] MM Sell {ask_qty} @ {ask_price} (skew: {skew:.2f}, spread: {spread:.2f})")
+            orders.append(Order(product, ask_price, -ask_qty))
+
+        return orders
+
