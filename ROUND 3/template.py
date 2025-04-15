@@ -144,7 +144,12 @@ max_position = {
     'DJEMBES' : 60, 
     'PICNIC_BASKET1' : 60, 
     'PICNIC_BASKET2' : 100,
-
+    'VOLCANIC_ROCK': 400,
+    'VOLCANIC_ROCK_VOUCHER_10000': 200,
+    'VOLCANIC_ROCK_VOUCHER_10250': 200,
+    'VOLCANIC_ROCK_VOUCHER_10500': 200,
+    'VOLCANIC_ROCK_VOUCHER_9500': 200,
+    'VOLCANIC_ROCK_VOUCHER_9750': 200
 }
 valuation_strategy={
     'KELP' : 'mid', 
@@ -155,7 +160,12 @@ valuation_strategy={
     'DJEMBES' : 'mid', 
     'PICNIC_BASKET1' : 'mid', 
     'PICNIC_BASKET2' : 'mid',
-
+    'VOLCANIC_ROCK': 'mid',
+    'VOLCANIC_ROCK_VOUCHER_10000': 'mid',
+    'VOLCANIC_ROCK_VOUCHER_10250': 'mid',
+    'VOLCANIC_ROCK_VOUCHER_10500': 'mid',
+    'VOLCANIC_ROCK_VOUCHER_9500': 'mid',
+    'VOLCANIC_ROCK_VOUCHER_9750': 'mid' 
 }
 
 
@@ -168,7 +178,12 @@ price_history = {
     'DJEMBES' : deque(maxlen=20), 
     'PICNIC_BASKET1' : deque(maxlen=20), 
     'PICNIC_BASKET2' : deque(maxlen=20),
-
+    'VOLCANIC_ROCK': deque(maxlen=20),
+    'VOLCANIC_ROCK_VOUCHER_10000': deque(maxlen=20),
+    'VOLCANIC_ROCK_VOUCHER_10250': deque(maxlen=20),
+    'VOLCANIC_ROCK_VOUCHER_10500': deque(maxlen=20),
+    'VOLCANIC_ROCK_VOUCHER_9500': deque(maxlen=20),
+    'VOLCANIC_ROCK_VOUCHER_9750': deque(maxlen=20), 
 }
 cooldown = {
     'KELP' : 0, 
@@ -179,7 +194,12 @@ cooldown = {
     'DJEMBES' : 0, 
     'PICNIC_BASKET1' : 0, 
     'PICNIC_BASKET2' : 0,
-
+    'VOLCANIC_ROCK': 0,
+    'VOLCANIC_ROCK_VOUCHER_10000': 0,
+    'VOLCANIC_ROCK_VOUCHER_10250': 0,
+    'VOLCANIC_ROCK_VOUCHER_10500': 0,
+    'VOLCANIC_ROCK_VOUCHER_9500': 0,
+    'VOLCANIC_ROCK_VOUCHER_9750': 0, 
 }
 
 cooldown_period = {
@@ -191,7 +211,12 @@ cooldown_period = {
     'DJEMBES' : 5, 
     'PICNIC_BASKET1' : 5, 
     'PICNIC_BASKET2' : 5,
-
+    'VOLCANIC_ROCK': 4,
+    'VOLCANIC_ROCK_VOUCHER_10000': 5,
+    'VOLCANIC_ROCK_VOUCHER_10250': 5,
+    'VOLCANIC_ROCK_VOUCHER_10500': 5,
+    'VOLCANIC_ROCK_VOUCHER_9500': 5,
+    'VOLCANIC_ROCK_VOUCHER_9750': 5 
 }
 
 mid_price = {
@@ -203,7 +228,12 @@ mid_price = {
     'DJEMBES' : 0, 
     'PICNIC_BASKET1' : 0, 
     'PICNIC_BASKET2' : 0,
-
+    'VOLCANIC_ROCK': 0,
+    'VOLCANIC_ROCK_VOUCHER_10000': 0,
+    'VOLCANIC_ROCK_VOUCHER_10250': 0,
+    'VOLCANIC_ROCK_VOUCHER_10500': 0,
+    'VOLCANIC_ROCK_VOUCHER_9500': 0,
+    'VOLCANIC_ROCK_VOUCHER_9750': 0  
 }
 
 ######## BOLLINGER PARAMS ########
@@ -216,7 +246,12 @@ b_window_size = {
     'DJEMBES' : 20, 
     'PICNIC_BASKET1' : 3, 
     'PICNIC_BASKET2' : 3,
-
+    'VOLCANIC_ROCK': 20,
+    'VOLCANIC_ROCK_VOUCHER_10000': 20,
+    'VOLCANIC_ROCK_VOUCHER_10250': 20,
+    'VOLCANIC_ROCK_VOUCHER_10500': 20,
+    'VOLCANIC_ROCK_VOUCHER_9500': 20,
+    'VOLCANIC_ROCK_VOUCHER_9750': 20  
 }  
 
 
@@ -230,7 +265,12 @@ ema_alpha = {
     'DJEMBES' : 0.5, 
     'PICNIC_BASKET1' : 0.5, 
     'PICNIC_BASKET2' : 0.5, 
-
+    'VOLCANIC_ROCK': 0.9,
+    'VOLCANIC_ROCK_VOUCHER_10000':0.9,
+    'VOLCANIC_ROCK_VOUCHER_10250': 0.9,
+    'VOLCANIC_ROCK_VOUCHER_10500': 0.9,
+    'VOLCANIC_ROCK_VOUCHER_9500': 0.9,
+    'VOLCANIC_ROCK_VOUCHER_9750': 0.9,
 }  
 
 ###### ZSCORE PARAMS ##########
@@ -353,7 +393,12 @@ gamma = {
     'DJEMBES' : 1e-9, 
     'PICNIC_BASKET1' : 1e-9, 
     'PICNIC_BASKET2' : 1e-9,
-
+    'VOLCANIC_ROCK': 1e-9,
+    'VOLCANIC_ROCK_VOUCHER_10000':1e-9,
+    'VOLCANIC_ROCK_VOUCHER_10250': 1e-9,
+    'VOLCANIC_ROCK_VOUCHER_10500': 1e-9,
+    'VOLCANIC_ROCK_VOUCHER_9500': 1e-9,
+    'VOLCANIC_ROCK_VOUCHER_9750': 1e-9, 
 }
 
 deviation_threshold = {
@@ -365,7 +410,12 @@ deviation_threshold = {
     'DJEMBES' : 30, 
     'PICNIC_BASKET1' : 40, 
     'PICNIC_BASKET2' : 40,
-
+    'VOLCANIC_ROCK': 40,
+    'VOLCANIC_ROCK_VOUCHER_10000': 40,
+    'VOLCANIC_ROCK_VOUCHER_10250': 40,
+    'VOLCANIC_ROCK_VOUCHER_10500': 40,
+    'VOLCANIC_ROCK_VOUCHER_9500': 40,
+    'VOLCANIC_ROCK_VOUCHER_9750': 40
      
 }
 
@@ -378,7 +428,12 @@ prev_status = {
     'DJEMBES' : 'normal', 
     'PICNIC_BASKET1' : 'normal', 
     'PICNIC_BASKET2' : 'normal',
-
+    'VOLCANIC_ROCK': 'normal',
+    'VOLCANIC_ROCK_VOUCHER_10000': 'normal',
+    'VOLCANIC_ROCK_VOUCHER_10250': 'normal',
+    'VOLCANIC_ROCK_VOUCHER_10500': 'normal',
+    'VOLCANIC_ROCK_VOUCHER_9500': 'normal',
+    'VOLCANIC_ROCK_VOUCHER_9750': 'normal', 
 }
 ema={
     'KELP' : None, 
@@ -389,7 +444,12 @@ ema={
     'DJEMBES' : None, 
     'PICNIC_BASKET1' : None, 
     'PICNIC_BASKET2' : None,
-
+    'VOLCANIC_ROCK': None,
+    'VOLCANIC_ROCK_VOUCHER_10000': None,
+    'VOLCANIC_ROCK_VOUCHER_10250': None,
+    'VOLCANIC_ROCK_VOUCHER_10500': None,
+    'VOLCANIC_ROCK_VOUCHER_9500': None,
+    'VOLCANIC_ROCK_VOUCHER_9750': None,  
 }
 ############# END OF PARAMS ###############
 
@@ -431,9 +491,12 @@ class Trader:
                 'DJEMBES' : 'AVELLANEDA',           ##curentbest IDK
                 'PICNIC_BASKET1' : 'KELPRESIN',    ##curentbest IDK
                 'PICNIC_BASKET2' : 'KELPRESIN',
-        
-
-
+                'VOLCANIC_ROCK': 'AVELLANEDA',
+                'VOLCANIC_ROCK_VOUCHER_10000': 'AVELLANEDA',
+                'VOLCANIC_ROCK_VOUCHER_10250': 'AVELLANEDA',
+                'VOLCANIC_ROCK_VOUCHER_10500': 'AVELLANEDA',
+                'VOLCANIC_ROCK_VOUCHER_9500': 'AVELLANEDA',
+                'VOLCANIC_ROCK_VOUCHER_9750': 'AVELLANEDA',    ##curentbest IDK
             }
         self.strategy = {
             'AVELLANEDA' : self.avellaneda,
