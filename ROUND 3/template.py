@@ -2,7 +2,7 @@ from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder
 from typing import Dict, List
 import math
 import numpy as np
-from collections import deque
+from collections import deque, defaultdict
 import json
 from typing import Any
 import statistics
@@ -11,6 +11,7 @@ import statistics
 
 
 ##############      LOGGER STUFF    ############## 
+
 
 
 class Logger:
@@ -121,19 +122,31 @@ class Logger:
         return json.dumps(value, cls=ProsperityEncoder, separators=(",", ":"))
 
     def truncate(self, value: str, max_length: int) -> str:
-        if len(value) <= max_length:
-            return value
+        lo, hi = 0, min(len(value), max_length)
+        out = ""
 
-        return value[: max_length - 3] + "..."
+        while lo <= hi:
+            mid = (lo + hi) // 2
+
+            candidate = value[:mid]
+            if len(candidate) < len(value):
+                candidate += "..."
+
+            encoded_candidate = json.dumps(candidate)
+
+            if len(encoded_candidate) <= max_length:
+                out = candidate
+                lo = mid + 1
+            else:
+                hi = mid - 1
+
+        return out
 
 
 logger = Logger()
-
 #########   END OF LOGGER ########
 
-# products = [ 'KELP', 'RAINFOREST_RESIN', 'PICNIC_BASKET1','PICNIC_BASKET2','VOLCANIC_ROCK','VOLCANIC_ROCK_VOUCHER_10000','VOLCANIC_ROCK_VOUCHER_10250','VOLCANIC_ROCK_VOUCHER_10500','VOLCANIC_ROCK_VOUCHER_9500','VOLCANIC_ROCK_VOUCHER_9750']
-# products = ['RAINFOREST_RESIN', 'KELP' ]
-products = ['PICNIC_BASKET2']
+
 #########  PRODUCT PARAMS ########
 max_position = {
     'KELP' : 50, 
@@ -388,7 +401,7 @@ gamma = {
     'KELP' : 1e-9, 
     'RAINFOREST_RESIN' : 1e-9, 
     'SQUID_INK' : 1e-9, 
-    'JAMS' : 1e-9, 
+    'JAMS' : 1e6, 
     'CROISSANTS' : 1e-9, 
     'DJEMBES' : 1e-9, 
     'PICNIC_BASKET1' : 1e-9, 
@@ -451,12 +464,27 @@ ema={
     'VOLCANIC_ROCK_VOUCHER_9500': None,
     'VOLCANIC_ROCK_VOUCHER_9750': None,  
 }
+############# PAIR TRADING PARAMS #########
+spread_history = defaultdict(lambda: defaultdict(lambda: deque(maxlen=20)))
+
+
 ############# END OF PARAMS ###############
 
+# products = [ 'SQUID_INK','RAINFOREST_RESIN', 'KELP','PICNIC_BASKET1','PICNIC_BASKET2','VOLCANIC_ROCK','VOLCANIC_ROCK_VOUCHER_10000','VOLCANIC_ROCK_VOUCHER_10250','VOLCANIC_ROCK_VOUCHER_10500','VOLCANIC_ROCK_VOUCHER_9500','VOLCANIC_ROCK_VOUCHER_9750']
 
+products = [ 'SQUID_INK', 'JAMS', 'CROISSANTS', 'DJEMBES']
+# products = ['RAINFOREST_RESIN', 'KELP' ]
+# products = ['PICNIC_BASKET1','PICNIC_BASKET2' ]
+# products = ['JAMS']
+# pairs = [( 'JAMS' , 'CROISSANTS')]
+# pairs = [('PICNIC_BASKET1', 'PICNIC_BASKET2')]
+pairs = []
 class Trader:
     def __init__(self):
         """ Storing all the params locally for speed """
+        self.renko_history = {}  # per-product brick direction history
+        self.last_renko_price = {}  # per-product base renko level
+
         self.products = list(products)
         self.product_params = {'max_position' : dict(max_position), 
                                'ema':dict(ema),
@@ -480,15 +508,17 @@ class Trader:
                                'gamma' : dict(gamma), 
                                'alpha' : dict(ema_alpha), 
                                'deviation_threshold' : dict(deviation_threshold), 
-                               'prev_status' : dict(prev_status)
+                               'prev_status' : dict(prev_status),
+                               'spread_history' : spread_history, 
+
                                }
         self.product_strategy = {
                 'KELP' : 'KELPRESIN',              ##curentbest marketmakerrape
                 'RAINFOREST_RESIN' : 'KELPRESIN',  ##curentbest marketmakerrape
-                'SQUID_INK' : 'KELPRESIN',         ##curentbest BOLLINGER
-                'JAMS' : 'AVELLANEDA',              ##curentbest IDK
-                'CROISSANTS' : 'AVELLANEDA',        ##curentbest IDK
-                'DJEMBES' : 'AVELLANEDA',           ##curentbest IDK
+                'SQUID_INK' : 'RENKO',         ##curentbest BOLLINGER
+                'JAMS' : 'RENKO',              ##curentbest IDK
+                'CROISSANTS' : 'RENKO',        ##curentbest IDK
+                'DJEMBES' : 'RENKO',           ##curentbest IDK
                 'PICNIC_BASKET1' : 'KELPRESIN',    ##curentbest IDK
                 'PICNIC_BASKET2' : 'KELPRESIN',
                 'VOLCANIC_ROCK': 'AVELLANEDA',
@@ -510,7 +540,8 @@ class Trader:
             'IMBALANCE' : self.orderbook_imbalance_strategy,
             'KELTNER' : self.keltner_channel_strategy, 
             'MMCOPY' : self.market_maker_strategy,
-            'KELPRESIN' : self.kelp_strat
+            'KELPRESIN' : self.kelp_strat, 
+            'RENKO' : self.renko_strategy
         }
     
     def run(self, state: TradingState):
@@ -529,6 +560,14 @@ class Trader:
                 if len(order) > 0:
                     result[product] = order
 
+        for prod1, prod2 in pairs:
+            if prod1 not in state.listings:
+                continue
+            if prod2 not in state.listings:
+                continue
+            order_dict = self.pair_trading(prod1,prod2, state)
+            for prod, order in order_dict.items():
+                result[prod] = order
             # conversions.append(converts)
             
 
@@ -538,11 +577,14 @@ class Trader:
 
 
     ######### STRATEGIES #######
+
     def avellaneda(self, product, order_depth, current_position, timestamp):
         orders = []
         
-        mid_price, best_ask, best_bid =self.get_mid_price(product,order_depth)
 
+        mid_price, best_ask ,best_bid=self.get_mid_price(product,order_depth)
+
+        self.product_params['price_history'][product].append(mid_price)
         realized_vol = self.calculate_volatility(self.product_params['price_history'][product])
         effective_sigma = realized_vol
         
@@ -630,6 +672,7 @@ class Trader:
         # logger.print("-----------------------",bid_price, ask_price, rest_price,k,"------------------------")
     
         return orders
+        
     def bollinger_strategy(self, product, order_depth, current_position, timestamp):
         p = self.product_params
         orders = []
@@ -649,37 +692,37 @@ class Trader:
         remaining_sell = p['max_position'][product] + current_position
 
         status, ewma_mid = self.detect_fake(product, mid_price)
-        logger.print(mid_price, ewma_mid, status)
+        # logger.print(mid_price, ewma_mid, status)
 
         # --- Trend check ---
-        trend = mid_price - ewma_mid
-        trend_threshold = 2 * std  # adjustable
+        # trend = mid_price - ewma_mid
+        # trend_threshold = 2 * std  # adjustable
 
-        disable_buy = trend < -trend_threshold and current_position >= 0
-        disable_sell = trend > trend_threshold and current_position <= 0
+        # disable_buy = trend < -trend_threshold and current_position >= 0
+        # disable_sell = trend > trend_threshold and current_position <= 0
 
         if status == "cooldown":
-            logger.print(f"{product} in cooldown — not quoting")
+            # logger.print(f"{product} in cooldown — not quoting")
             return []
 
-        elif status == "fake":
-            logger.print(f"{product} FAKE detected at {mid_price}, smoothed {ewma_mid}")
+        # elif status == "fake":
+            # logger.print(f"{product} FAKE detected at {mid_price}, smoothed {ewma_mid}")
 
-            # Only fade fake if price is NOT in strong trend
-            if trend < trend_threshold and mid_price < ewma_mid and remaining_buy > 0:
-                fade_price = int(mid_price)
-                size = int(remaining_buy * 0.4)  # partial fade
-                orders.append(Order(product, fade_price, size))
+            # # Only fade fake if price is NOT in strong trend
+            # if trend < trend_threshold and mid_price < ewma_mid and remaining_buy > 0:
+            #     fade_price = int(mid_price)
+            #     size = int(remaining_buy * 0.4)  # partial fade
+            #     orders.append(Order(product, fade_price, size))
 
-            elif trend > -trend_threshold and mid_price > ewma_mid and remaining_sell > 0:
-                fade_price = int(mid_price)
-                size = int(remaining_sell * 0.4)
-                orders.append(Order(product, fade_price, -size))
+            # elif trend > -trend_threshold and mid_price > ewma_mid and remaining_sell > 0:
+            #     fade_price = int(mid_price)
+            #     size = int(remaining_sell * 0.4)
+            #     orders.append(Order(product, fade_price, -size))
 
-            return orders
+            # return orders
 
         elif status == "snap_back":
-            logger.print(f"{product} SNAPBACK at {mid_price}, smoothed {ewma_mid}")
+            # logger.print(f"{product} SNAPBACK at {mid_price}, smoothed {ewma_mid}")
 
             # Direction-aware snap trading
             if mid_price < ewma_mid and remaining_sell > 0:
@@ -696,19 +739,19 @@ class Trader:
 
             return orders
 
-        # --- Default quoting path (normal mode) ---
+        # # --- Default quoting path (normal mode) ---
         rest_price = 0.4 * mid_price + 0.6 * ewma_mid
         bid_price = int(rest_price - spread / 2)
         ask_price = int(rest_price + spread / 2)
 
-        # Avoid quoting aggressively in strong trend
-        if trend > trend_threshold and current_position <= 0:
-            logger.print("Uptrend detected — not quoting sell side")
-            ask_price = float('inf')  # disable sell
+        # # Avoid quoting aggressively in strong trend
+        # if trend > trend_threshold and current_position <= 0:
+        #     # logger.print("Uptrend /detected — not quoting sell side")
+        # ask_price = float('inf')  # disable sell
 
-        if trend < -trend_threshold and current_position >= 0:
-            logger.print("Downtrend detected — not quoting buy side")
-            bid_price = 0  # disable buy
+        # if trend < -trend_threshold and current_position >= 0:
+        #     # logger.print("Downtrend detected — not quoting buy side")
+        # bid_price = 0  # disable buy
 
         # --- Take existing liquidity ---
         for ask, vol in sorted(order_depth.sell_orders.items()):
@@ -737,10 +780,10 @@ class Trader:
             bid_size = int(remaining_buy * level_factor / num_levels)
             ask_size = int(remaining_sell * level_factor / num_levels)
 
-            if ask_size > 0 and not disable_sell:
-                orders.append(Order(product, ask_level_price, -ask_size))
-            if bid_size > 0 and not disable_buy:
-                orders.append(Order(product, bid_level_price, bid_size))
+            # if ask_size > 0 and not disable_sell:
+            orders.append(Order(product, ask_level_price, -ask_size))
+            # if bid_size > 0 and not disable_buy:
+            orders.append(Order(product, bid_level_price, bid_size))
 
         self.product_params['prev_status'][product] = status
         return orders
@@ -763,10 +806,67 @@ class Trader:
         return orders
 
 
+    def renko_strategy(self, product, order_depth, current_position, timestamp):
+        orders = []
+        p = self.product_params
+        
+        # Setup state
+        brick_size = p.get('brick_size', 10)
+        confirmation_bricks = p.get('confirmation_bricks', 4)
+        max_position = p['max_position'][product]
+
+        mid_price, best_ask, best_bid = self.get_mid_price(product, order_depth)
+
+        # Initialize tracking
+        if product not in self.renko_history:
+            self.renko_history[product] = deque(maxlen=20)
+            self.last_renko_price[product] = mid_price
+
+        # if len(self.renko_history[product]) < 10:
+        #     return []
+
+
+        bricks = self.renko_history[product]
+        last_renko_price = self.last_renko_price[product]
+        price_diff = mid_price - last_renko_price
+
+        direction = 0
+        if abs(price_diff) >= brick_size:
+            direction = int(math.copysign(1, price_diff))
+            num_bricks = int(abs(price_diff) // brick_size)
+            for _ in range(num_bricks):
+                bricks.append(direction)
+                last_renko_price += direction * brick_size
+            self.last_renko_price[product] = last_renko_price
+
+        # Not enough bricks to act
+        if len(bricks) < confirmation_bricks:
+            return []
+
+        # Check if we have strong directional trend
+        recent_trend = list(bricks)[-confirmation_bricks:]
+        trend_direction = bricks[-1]
+        if all(b == trend_direction for b in recent_trend):
+            # Trend confirmed
+            remaining_buy = max_position - current_position
+            remaining_sell = max_position + current_position
+
+            if trend_direction == 1 and remaining_buy > 0:
+                # Uptrend → Buy aggressively
+                buy_price = best_ask 
+                orders.append(Order(product, buy_price, remaining_buy))
+
+            elif trend_direction == -1 and remaining_sell > 0:
+                # Downtrend → Sell aggressively
+                sell_price = best_bid 
+                orders.append(Order(product, sell_price, -remaining_sell))
+
+        return orders
+
 
 
     def basket_arb(self, basket, state : TradingState):
-        order_dict = {}
+        order_dict = defaultdict(list)
         # baskets = ['PICNIC_BASKET1', 'PICNIC_BASKET2']
         baskets = {'PICNIC_BASKET1' : {'CROISSANTS' : 6, 'DJEMBES' : 1 , 'JAMS' : 3}, 'PICNIC_BASKET2' : {'CROISSANTS' : 4, 'JAMS' : 2}}
         min_asks = {}
@@ -785,33 +885,68 @@ class Trader:
         
         real_price , pb_ask, pb_bid = self.get_mid_price(basket, state.order_depths[basket])
 
-        mat_max_buy = int(min((self.product_params['max_position'][mat] - state.position.get(mat, 0))/wei for mat,wei in materials.items()))
-        mat_max_sell = int(min((self.product_params['max_position'][mat] + state.position.get(mat, 0))/wei for mat,wei in materials.items()))
+        # mat_max_buy = min(self.product_params['max_position'][mat], int(min((self.product_params['max_position'][mat] - state.position.get(mat, 0))/wei for mat,wei in materials.items())))
+        # mat_max_sell = min(self.product_params['max_position'][mat], int(min((self.product_params['max_position'][mat] + state.position.get(mat, 0))/wei for mat,wei in materials.items())))
 
-        pb_max_buy = self.product_params['max_position'][basket] - state.position.get(basket, 0)
-        pb_max_sell = self.product_params['max_position'][basket] + state.position.get(basket, 0)
+        pb_max_buy = min(self.product_params['max_position'][basket], self.product_params['max_position'][basket] - state.position.get(basket, 0))
+        pb_max_sell = min(self.product_params['max_position'][basket], self.product_params['max_position'][basket] + state.position.get(basket, 0))
 
         pb_min_ask = min(state.order_depths[basket].sell_orders.keys())
         pb_max_bid = max(state.order_depths[basket].buy_orders.keys())
 
-        threshold = self.calculate_volatility(self.product_params['price_history'][basket])
+        threshold = np.std(list(self.product_params['price_history'][basket]))
+
+    
 
         if abs(synthetic_price - real_price) >=threshold:
             if synthetic_price  > real_price:
-                order_dict[basket] = []
                 order_dict[basket].append(Order(basket, min(pb_max_bid+1, real_price-1), pb_max_buy))
 
                 # for mat, wei in materials.items():
-                #     order_dict[mat] = []
-                #     order_dict[mat].append(Order(mat, max(min_asks[mat]+1, mids[mat]+1), -mat_max_sell*wei))
+                #     order_dict[mat].append(Order(mat, mids[mat], -mat_max_sell*wei))
     
             else:
-                order_dict[basket] = []
                 order_dict[basket].append(Order(basket, max(pb_min_ask-1, real_price+1), -pb_max_sell))
 
                 # for mat, wei in materials.items():
-                #     order_dict[mat] = []
-                #     order_dict[mat].append(Order(mat, min(max_bids[mat]+1, mids[mat] -1), mat_max_buy*wei))
+                #     order_dict[mat].append(Order(mat, mids[mat], mat_max_buy*wei))
+        return order_dict
+
+    def pair_trading(self, product1, product2, state : TradingState):
+
+        order_dict = defaultdict(list)
+
+        p1_mid, p1_best_ask, p1_best_bid = self.get_mid_price(product1, state.order_depths[product1])
+        p2_mid, p2_best_ask, p2_best_bid = self.get_mid_price(product2, state.order_depths[product2])
+        
+        p1_max_buy = min(self.product_params['max_position'][product1], self.product_params['max_position'][product1] - state.position.get(product1, 0))
+        p1_max_sell = min(self.product_params['max_position'][product1], self.product_params['max_position'][product1] + state.position.get(product1, 0))
+
+        p2_max_buy = min(self.product_params['max_position'][product2], self.product_params['max_position'][product2] - state.position.get(product2, 0))
+        p2_max_sell = min(self.product_params['max_position'][product2], self.product_params['max_position'][product2] + state.position.get(product2, 0))
+
+        if min(len(self.product_params['price_history'][product1]),len(self.product_params['price_history'][product1])) <10:
+            return order_dict
+        beta = self.OLS_estimate_beta(product1, product2)
+        
+        # p1_mid -=
+
+        spread = p1_mid - beta*p2_mid
+        self.product_params['spread_history'][product1][product2].append(spread)
+        if len(self.product_params['spread_history'][product1][product2]) < 10:
+            return order_dict
+        spread_threshold = np.std(list(self.product_params['spread_history'][product1][product2]))*(1+ 20*self.calculate_volatility(self.product_params['spread_history'][product1][product2]))
+
+        if abs(spread) >= spread_threshold:
+            if spread > 0:
+                order_dict[product1].append(Order(product1, p1_mid , -p1_max_sell))
+            
+                order_dict[product2].append(Order(product2, p2_mid , p2_max_buy))
+            else:
+                order_dict[product1].append(Order(product1, p1_mid , p1_max_buy))
+            
+                order_dict[product2].append(Order(product2, p2_mid , -p2_max_sell))
+            
         return order_dict
 
 
@@ -863,7 +998,7 @@ class Trader:
 
             vwap_bid = self.calculate_vwap(bid_prices, bid_volumes, best_bid)
             vwap_ask = self.calculate_vwap(ask_prices, ask_volumes, best_ask)
-            mid_price = (vwap_bid + vwap_ask) / 2
+            mid_price = (vwap_bid + vwap_ask) >>1
 
         elif strategy == 'ema':
             alpha = 2 / (window_size + 1)
@@ -879,7 +1014,19 @@ class Trader:
         self.product_params['price_history'][product].append(mid_price)
         return mid_price, best_ask , best_bid 
     
+    def OLS_estimate_beta(self, prod1, prod2):
+        l = min(len(self.product_params['price_history'][prod1]), len(self.product_params['price_history'][prod2]))
+        A = np.array(list(self.product_params['price_history'][prod1])[:l])
+        B = np.array(list(self.product_params['price_history'][prod2])[:l])
+        beta = np.dot(A, B) / np.dot(B, B)
+        return beta
 
+    def vol_adj_beta(self, prod1, prod2):
+        vol1 = self.calculate_volatility(self.product_params['price_history'][prod1])
+        vol2 = self.calculate_volatility(self.product_params['price_history'][prod2])
+
+        return vol1/vol2
+    
     def calculate_vwap(self, prices, volumes, fallback_price):
         total_volume = sum(volumes)
         if total_volume == 0:
@@ -955,7 +1102,7 @@ class Trader:
         self.product_params['mid_price'][product] = ewma_mid
         
         deviation = abs(mid_price - ewma_mid)
-        logger.print("------", product, deviation, self.product_params['deviation_threshold'][product],deviation > self.product_params['deviation_threshold'][product],"-------")
+        # logger.print("------", product, deviation, self.product_params['deviation_threshold'][product],deviation > self.product_params['deviation_threshold'][product],"-------")
         # Cooldown active? Don't quote
         # if self.product_params['prev_status'][product] == "fake" and abs(mid_price - ewma_mid) < std:
         #     return "snap_reversion"
