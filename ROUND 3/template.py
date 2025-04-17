@@ -470,21 +470,28 @@ spread_history = defaultdict(lambda: defaultdict(lambda: deque(maxlen=20)))
 
 ############# END OF PARAMS ###############
 
-# products = [ 'SQUID_INK','RAINFOREST_RESIN', 'KELP','PICNIC_BASKET1','PICNIC_BASKET2','VOLCANIC_ROCK','VOLCANIC_ROCK_VOUCHER_10000','VOLCANIC_ROCK_VOUCHER_10250','VOLCANIC_ROCK_VOUCHER_10500','VOLCANIC_ROCK_VOUCHER_9500','VOLCANIC_ROCK_VOUCHER_9750']
+products = [ 'RAINFOREST_RESIN', 'KELP','PICNIC_BASKET1','PICNIC_BASKET2','VOLCANIC_ROCK','VOLCANIC_ROCK_VOUCHER_10000','VOLCANIC_ROCK_VOUCHER_10250','VOLCANIC_ROCK_VOUCHER_10500','VOLCANIC_ROCK_VOUCHER_9500','VOLCANIC_ROCK_VOUCHER_9750']
 
-products = [ 'SQUID_INK', 'JAMS', 'CROISSANTS', 'DJEMBES']
+# products = [ 'SQUID_INK', 'JAMS', 'CROISSANTS', 'DJEMBES']
 # products = ['RAINFOREST_RESIN', 'KELP' ]
 # products = ['PICNIC_BASKET1','PICNIC_BASKET2' ]
 # products = ['JAMS']
 # pairs = [( 'JAMS' , 'CROISSANTS')]
-# pairs = [('PICNIC_BASKET1', 'PICNIC_BASKET2')]
+# pairs = [('PICNIC_BASKET1', 'PICNIC_BASKET2')]    
+trips = [('JAMS', 'DJEMBES', "CROISSANTS")]
 pairs = []
 class Trader:
     def __init__(self):
         """ Storing all the params locally for speed """
         self.renko_history = {}  # per-product brick direction history
         self.last_renko_price = {}  # per-product base renko level
-
+        self.strike_price = {
+                'VOLCANIC_ROCK_VOUCHER_10000': 10000,
+                'VOLCANIC_ROCK_VOUCHER_10250': 10250,
+                'VOLCANIC_ROCK_VOUCHER_10500': 10500,
+                'VOLCANIC_ROCK_VOUCHER_9500': 9500,
+                'VOLCANIC_ROCK_VOUCHER_9750': 9750,  
+        }
         self.products = list(products)
         self.product_params = {'max_position' : dict(max_position), 
                                'ema':dict(ema),
@@ -569,6 +576,12 @@ class Trader:
             for prod, order in order_dict.items():
                 result[prod] = order
             # conversions.append(converts)
+        for prod1, prod2, prod3 in trips:
+            logger.print("sex")
+            order_dict=self.trip_strategy(prod1,prod2,prod3,state)
+            for prod, order in order_dict.items():
+                if len(order) > 0:
+                   result[prod] = order
             
 
         logger.flush(state, result, 0, "")
@@ -948,6 +961,107 @@ class Trader:
                 order_dict[product2].append(Order(product2, p2_mid , -p2_max_sell))
             
         return order_dict
+    
+    def trip_strategy(self, product1_t, product2_t,product3, state : TradingState):
+            order_dict = defaultdict(list)
+            product1 = product2_t
+            product2 = product1_t
+            p1_mid, p1_best_ask, p1_best_bid = self.get_mid_price(product1, state.order_depths[product1])
+            p2_mid, p2_best_ask, p2_best_bid = self.get_mid_price(product2, state.order_depths[product2])
+            p3_mid, p3_best_ask, p3_best_bid = self.get_mid_price(product3, state.order_depths[product3])
+            
+            p1_max_buy = min(self.product_params['max_position'][product1], self.product_params['max_position'][product1] - state.position.get(product1, 0))
+            p1_max_sell = min(self.product_params['max_position'][product1], self.product_params['max_position'][product1] + state.position.get(product1, 0))
+
+            p2_max_buy = min(self.product_params['max_position'][product2], self.product_params['max_position'][product2] - state.position.get(product2, 0))
+            p2_max_sell = min(self.product_params['max_position'][product2], self.product_params['max_position'][product2] + state.position.get(product2, 0))
+            
+            p3_max_buy = min(self.product_params['max_position'][product3], self.product_params['max_position'][product3] - state.position.get(product3, 0))
+            p3_max_sell = min(self.product_params['max_position'][product3], self.product_params['max_position'][product3] + state.position.get(product3, 0))
+
+            logger.print(p1_mid,p2_mid,p3_mid)
+            logger.print(min(len(self.product_params['price_history'][product1]),len(self.product_params['price_history'][product2]),len(self.product_params['price_history'][product3])))
+            if min(len(self.product_params['price_history'][product1]),len(self.product_params['price_history'][product2]),len(self.product_params['price_history'][product3])) <10:
+                return order_dict
+            
+            beta12 = self.OLS_estimate_beta(product1, product2)
+            beta23 = self.OLS_estimate_beta(product2, product3)
+            beta31 = self.OLS_estimate_beta(product3, product1)
+                    
+            # p1_mid -=
+
+            spread12 = p1_mid - beta12*p2_mid
+            spread23 = p2_mid - beta23*p3_mid
+            spread31 = p3_mid - beta31*p1_mid
+            
+            
+            logger.print(spread12,beta12)
+            logger.print(spread23,beta23)
+            logger.print(spread31,beta31)
+            
+            self.product_params['spread_history'][product1][product2].append(spread12)
+            self.product_params['spread_history'][product2][product3].append(spread23)
+            self.product_params['spread_history'][product3][product1].append(spread31)
+            logger.print(self.product_params['spread_history'][product1][product2])
+            logger.print(self.product_params['spread_history'][product2][product3])
+            logger.print(self.product_params['spread_history'][product3][product1])
+
+            # if len(self.product_params['spread_history'][product1][product2]) or len(self.product_params['spread_history'][product2][product3]) or len(self.product_params['spread_history'][product3][product1]) < 10:
+            #     return order_dict
+            
+            # spread_threshold12 = np.std(list(self.product_params['spread_history'][product1][product2]))
+            # spread_threshold23 = np.std(list(self.product_params['spread_history'][product2][product3]))
+            # spread_threshold31 = np.std(list(self.product_params['spread_history'][product3][product1]))
+            
+            spread_threshold12 = spread_threshold23 = spread_threshold31 = 15
+
+
+            if spread12>=spread_threshold12 and spread23<= -0:            
+                    order_dict[product2].append(Order(product2, p2_best_ask , p2_max_buy))
+            elif spread12 <=-0 and spread23>= 0:            
+                    order_dict[product2].append(Order(product2, p2_best_bid , -p2_max_sell))
+            if spread23>=0 and spread31<= -0:            
+                    order_dict[product3].append(Order(product3, p3_best_ask , p3_max_buy))
+            elif spread23<=-0 and spread31>= 0:            
+                    order_dict[product3].append(Order(product3, p3_best_bid , -p3_max_sell))
+            if spread31>=0 and spread12<= -0:            
+                    order_dict[product1].append(Order(product1, p1_best_ask , p1_max_buy))
+            elif spread31<=-0 and spread12>= 0:            
+                    order_dict[product1].append(Order(product1, p1_best_bid , -p1_max_sell))
+
+            logger.print(spread12,beta12)
+            logger.print(spread23,beta23)
+            logger.print(spread31,beta31)
+            return order_dict
+
+    # def volcanic_rock_trader(self,product, state: TradingState):
+    #     orders = []
+    #     order_depth = state.order_depths[product]
+    #     time_to_expiry = max(5 - state.timestamp/1e6, 1e-6)
+    #     strike_price = self.strike_price[product]
+        
+    #     # Get the current mid price
+    #     mid_price, best_ask, best_bid = self.get_mid_price(product, order_depth)
+    #     underlying_price , volro_ask ,volro_bid = self.get_mid_price('VOLCANIC_ROCK', state.order_depths['VOLCANIC_ROCK'])
+    #     # Calculate m_t for the voucher
+    #     m_t = math.log(strike_price / underlying_price) / math.sqrt(time_to_expiry)
+
+    #     # Calculate the current implied volatility (v_t) using the parabola
+    #     current_iv = a * m_t**2 + b * m_t + c
+
+    #     # Base IV derived from the fitted parabola (constant for each product)
+    #     base_iv = c  # This is the value of the implied volatility when m_t = 0
+
+    #     # Evaluate the trading signal (Buy if underpriced, Sell if overpriced)
+    #     if current_iv < base_iv:
+    #         action = 'BUY'  # Voucher is underpriced
+    #     elif current_iv > base_iv:
+    #         action = 'SELL'  # Voucher is overpriced
+    #     else:
+    #         action = 'HOLD'  # No action
+
+    #     return orders
+
 
 
 # def 
