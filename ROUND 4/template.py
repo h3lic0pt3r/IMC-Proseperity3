@@ -6,6 +6,9 @@ from collections import deque, defaultdict
 import json
 from typing import Any
 import statistics
+from math import log, sqrt, exp, pi, erf
+from typing import Literal, Tuple
+
 
 ##############      ALL IMPORTS     ##############
 
@@ -182,22 +185,7 @@ valuation_strategy={
 }
 
 
-price_history = {
-    'KELP' : deque(maxlen=20), 
-    'RAINFOREST_RESIN' : deque(maxlen=20), 
-    'SQUID_INK' : deque(maxlen=20), 
-    'JAMS' : deque(maxlen=20), 
-    'CROISSANTS' : deque(maxlen=3), 
-    'DJEMBES' : deque(maxlen=20), 
-    'PICNIC_BASKET1' : deque(maxlen=20), 
-    'PICNIC_BASKET2' : deque(maxlen=20),
-    'VOLCANIC_ROCK': deque(maxlen=20),
-    'VOLCANIC_ROCK_VOUCHER_10000': deque(maxlen=20),
-    'VOLCANIC_ROCK_VOUCHER_10250': deque(maxlen=20),
-    'VOLCANIC_ROCK_VOUCHER_10500': deque(maxlen=20),
-    'VOLCANIC_ROCK_VOUCHER_9500': deque(maxlen=20),
-    'VOLCANIC_ROCK_VOUCHER_9750': deque(maxlen=20), 
-}
+price_history = defaultdict(lambda: deque(maxlen=20))
 cooldown = {
     'KELP' : 0, 
     'RAINFOREST_RESIN' : 0, 
@@ -470,18 +458,32 @@ spread_history = defaultdict(lambda: defaultdict(lambda: deque(maxlen=20)))
 
 ############# END OF PARAMS ###############
 
-products = [ 'RAINFOREST_RESIN', 'KELP','PICNIC_BASKET1','PICNIC_BASKET2','VOLCANIC_ROCK','VOLCANIC_ROCK_VOUCHER_10000','VOLCANIC_ROCK_VOUCHER_10250','VOLCANIC_ROCK_VOUCHER_10500','VOLCANIC_ROCK_VOUCHER_9500','VOLCANIC_ROCK_VOUCHER_9750']
+# products = [ 'RAINFOREST_RESIN', 'KELP','PICNIC_BASKET1','PICNIC_BASKET2']
 
-# products = [ 'SQUID_INK', 'JAMS', 'CROISSANTS', 'DJEMBES']
-# products = ['RAINFOREST_RESIN', 'KELP' ]
+# products = [ 'SQUID_INK']
+# products = ['RAINFOREST_RESIN', 'KELP', 'SQUID_INK' ]
 # products = ['PICNIC_BASKET1','PICNIC_BASKET2' ]
-# products = ['JAMS']
+products = []
 # pairs = [( 'JAMS' , 'CROISSANTS')]
 # pairs = [('PICNIC_BASKET1', 'PICNIC_BASKET2')]    
-trips = [('JAMS', 'DJEMBES', "CROISSANTS")]
+vouchers = ['VOLCANIC_ROCK_VOUCHER_10000','VOLCANIC_ROCK_VOUCHER_10250','VOLCANIC_ROCK_VOUCHER_10500']
+# trips = [('JAMS', 'DJEMBES', "CROISSANTS")]
+# vouchers =[]
+trips = []
 pairs = []
 class Trader:
     def __init__(self):
+        self.params=  {'SQUID_INK':{
+        "mean_reversion_beta": -0.45,
+        "take_width": 1.5,
+        "clear_width": 0.75,
+        "adverse_volume": 20,
+        "min_edge": 4,
+        "spread_window": 50,
+    }
+    
+}
+        self.TTE_MAX = 4
         """ Storing all the params locally for speed """
         self.renko_history = {}  # per-product brick direction history
         self.last_renko_price = {}  # per-product base renko level
@@ -492,6 +494,8 @@ class Trader:
                 'VOLCANIC_ROCK_VOUCHER_9500': 9500,
                 'VOLCANIC_ROCK_VOUCHER_9750': 9750,  
         }
+        self.kelpres_maxed = defaultdict(lambda :deque(maxlen=20))
+        self.vol_hist = defaultdict(lambda: deque(maxlen=20))
         self.products = list(products)
         self.product_params = {'max_position' : dict(max_position), 
                                'ema':dict(ema),
@@ -508,7 +512,7 @@ class Trader:
                                'kel_max_vol' : dict(kel_max_vol), 
                                'kel_atr_scale' : dict(kel_atr_scale), 
                                'trading_time' : trading_time, 
-                               'price_history' : dict(price_history), 
+                               'price_history' : price_history, 
                                'cooldown' : dict(cooldown), 
                                'cooldown_period' : dict(cooldown_period), 
                                'mid_price' : dict(mid_price), 
@@ -522,7 +526,7 @@ class Trader:
         self.product_strategy = {
                 'KELP' : 'KELPRESIN',              ##curentbest marketmakerrape
                 'RAINFOREST_RESIN' : 'KELPRESIN',  ##curentbest marketmakerrape
-                'SQUID_INK' : 'RENKO',         ##curentbest BOLLINGER
+                'SQUID_INK' : 'KELPRESIN',         ##curentbest BOLLINGER
                 'JAMS' : 'RENKO',              ##curentbest IDK
                 'CROISSANTS' : 'RENKO',        ##curentbest IDK
                 'DJEMBES' : 'RENKO',           ##curentbest IDK
@@ -538,15 +542,15 @@ class Trader:
         self.strategy = {
             'AVELLANEDA' : self.avellaneda,
             'BOLLINGER' : self.bollinger_strategy,
-            'BREAKOUT' : self.breakout_strategy,
-            'MOVEAVG' : self.moving_average_strategy,
-            'ZSCORE' : self.zscore_strategy,
-            'CROSSOVER' : self.crossover_strategy,
-            'MOMENTUM' : self.momentum_strategy,
-            'FAIRPRICE' : self.fair_price_mm_strategy,
-            'IMBALANCE' : self.orderbook_imbalance_strategy,
-            'KELTNER' : self.keltner_channel_strategy, 
-            'MMCOPY' : self.market_maker_strategy,
+            # 'BREAKOUT' : self.breakout_strategy,
+            # 'MOVEAVG' : self.moving_average_strategy,
+            # 'ZSCORE' : self.zscore_strategy,
+            # 'CROSSOVER' : self.crossover_strategy,
+            # 'MOMENTUM' : self.momentum_strategy,
+            # 'FAIRPRICE' : self.fair_price_mm_strategy,
+            # 'IMBALANCE' : self.orderbook_imbalance_strategy,
+            # 'KELTNER' : self.keltner_channel_strategy, 
+            # 'MMCOPY' : self.market_maker_strategy,
             'KELPRESIN' : self.kelp_strat, 
             'RENKO' : self.renko_strategy
         }
@@ -582,8 +586,10 @@ class Trader:
             for prod, order in order_dict.items():
                 if len(order) > 0:
                    result[prod] = order
-            
-
+        order_dict = self.smail_arb(state)
+        for prod, order in order_dict.items():
+                    if len(order) > 0:
+                        result[prod] = order
         logger.flush(state, result, 0, "")
         return result, 0, ""
 
@@ -805,6 +811,10 @@ class Trader:
         orders = []
 
         mid_price, best_ask, best_bid = self.get_mid_price(product, order_depth)
+        if abs(current_position) == self.product_params['max_position'][product]:
+            self.kelpres_maxed[product].append(1)
+        else:
+            self.kelpres_maxed[product].append(0)
 
         remaining_buy = min(self.product_params['max_position'][product] ,self.product_params['max_position'][product] - current_position)
         remaining_sell = min(self.product_params['max_position'][product] ,self.product_params['max_position'][product] + current_position)
@@ -812,10 +822,23 @@ class Trader:
         min_ask = min(order_depth.sell_orders.keys())
         max_buy = max(order_depth.buy_orders.keys())
 
+        # if abs(current_position) == self.product_params['max_position'][product]:
+        #     orders.append(Order(product, mid_price, -current_position))
+        #     return orders
+        # if max_buy+1 <=mid_price:
+        # if sum(list(self.kelpres_maxed[product])) >=20:
+        #     orders.append(Order(product, mid_price, -current_position))
+        #     return orders
+
         orders.append(Order(product, min(max_buy+1,mid_price), remaining_buy))
-        
+        # elif current_position == -self.product_params['max_position'][product]:
+        #     orders.append(Order(product, mid_price, -current_position))
+        # if min_ask-1 >=mid_price:
         orders.append(Order(product, max(min_ask-1, mid_price), -remaining_sell))
-        
+        # elif current_position == self.product_params['max_position'][product]:
+            # orders.append(Order(product, mid_price, -current_position))
+
+
         return orders
 
 
@@ -1033,35 +1056,76 @@ class Trader:
             logger.print(spread23,beta23)
             logger.print(spread31,beta31)
             return order_dict
+    
+    def smail_arb(self, state: TradingState):
+        # Smile curve coefficients
+        a_t = 1.59195 
+        b_t = 0.00258 
+        c_t = 0.02210
 
-    # def volcanic_rock_trader(self,product, state: TradingState):
-    #     orders = []
-    #     order_depth = state.order_depths[product]
-    #     time_to_expiry = max(5 - state.timestamp/1e6, 1e-6)
-    #     strike_price = self.strike_price[product]
-        
-    #     # Get the current mid price
-    #     mid_price, best_ask, best_bid = self.get_mid_price(product, order_depth)
-    #     underlying_price , volro_ask ,volro_bid = self.get_mid_price('VOLCANIC_ROCK', state.order_depths['VOLCANIC_ROCK'])
-    #     # Calculate m_t for the voucher
-    #     m_t = math.log(strike_price / underlying_price) / math.sqrt(time_to_expiry)
+        order_dict = defaultdict(list)
+        net_delta = 0  # Net delta from all option trades
 
-    #     # Calculate the current implied volatility (v_t) using the parabola
-    #     current_iv = a * m_t**2 + b * m_t + c
+        # Time to expiry in years normalized by TTE_MAX
+        tte = max((self.TTE_MAX - state.timestamp / 1e6) / 252, 1e-6) / self.TTE_MAX
 
-    #     # Base IV derived from the fitted parabola (constant for each product)
-    #     base_iv = c  # This is the value of the implied volatility when m_t = 0
+        # VOLCANIC_ROCK price and position
+        rock_mid, rock_best_ask, rock_best_bid = self.get_mid_price('VOLCANIC_ROCK', state.order_depths['VOLCANIC_ROCK'])
+        rock_pos = state.position.get('VOLCANIC_ROCK', 0)
+        rock_max_buy = self.product_params['max_position']['VOLCANIC_ROCK'] - rock_pos
+        rock_max_sell = self.product_params['max_position']['VOLCANIC_ROCK'] + rock_pos
 
-    #     # Evaluate the trading signal (Buy if underpriced, Sell if overpriced)
-    #     if current_iv < base_iv:
-    #         action = 'BUY'  # Voucher is underpriced
-    #     elif current_iv > base_iv:
-    #         action = 'SELL'  # Voucher is overpriced
-    #     else:
-    #         action = 'HOLD'  # No action
+        for voucher, strike in self.strike_price.items():
+            # if voucher not in vouchers:
+            #     continue
+            vou_mid, vou_best_ask, vou_best_bid = self.get_mid_price(voucher, state.order_depths[voucher])
+            current_position = state.position.get(voucher, 0)
 
-    #     return orders
+            vou_max_buy = self.product_params['max_position'][voucher] - current_position
+            vou_max_sell = self.product_params['max_position'][voucher] + current_position
 
+            # Calculate true IV
+            true_vol = self.implied_volatility(vou_mid, rock_mid, strike, tte)
+
+            # Smile-based fitted IV
+            m_t = log(strike / rock_mid) / sqrt(tte)
+            synth_vol = a_t * m_t**2 + b_t * m_t + c_t
+            self.vol_hist[voucher].append(true_vol)
+
+            if len(self.vol_hist[voucher]) < 10:
+                continue
+
+            smu_vol = np.mean(self.vol_hist[voucher])
+            vol_thresh = np.std(self.vol_hist[voucher])
+
+            logger.print(f"{voucher}: true_vol={true_vol:.4f}, fitted_vol={synth_vol:.4f}, smu_vol={smu_vol:.4f}, thresh={vol_thresh:.4f}")
+
+            # Delta from smile IV
+            smile_delta = self.bs_call_delta(rock_mid, strike, tte, synth_vol)
+
+            # Trade if mispricing detected
+            if abs(smu_vol - synth_vol) > vol_thresh:
+                if smu_vol > synth_vol and vou_max_sell > 0:
+                    # Sell overvalued option → collect premium → short delta
+                    qty = vou_max_sell
+                    net_delta -= qty * smile_delta
+                    order_dict[voucher].append(Order(voucher, vou_best_bid, -qty))
+                elif smu_vol < synth_vol and vou_max_buy > 0:
+                    # Buy undervalued option → pay premium → long delta
+                    qty = vou_max_buy
+                    net_delta += qty * smile_delta
+                    order_dict[voucher].append(Order(voucher, vou_best_ask, qty))
+
+        # Hedge using VOLCANIC_ROCK
+        hedge_qty = int(round(-net_delta))  # invert delta to neutralize
+        logger.print(f"Net delta from options: {net_delta:.2f}, hedging with {hedge_qty} VOLCANIC_ROCK")
+
+        if hedge_qty > 0 and hedge_qty <= rock_max_buy:
+            order_dict['VOLCANIC_ROCK'].append(Order('VOLCANIC_ROCK', rock_best_ask, hedge_qty))
+        elif hedge_qty < 0 and abs(hedge_qty) <= rock_max_sell:
+            order_dict['VOLCANIC_ROCK'].append(Order('VOLCANIC_ROCK', rock_best_bid, hedge_qty))
+
+        return order_dict
 
 
 # def 
@@ -1082,6 +1146,53 @@ class Trader:
 
 
     ###### ALL UTILITY FUNCTIONS #######
+
+    def norm_cdf(self,x):
+        return 0.5 * (1 + erf(x / sqrt(2)))
+    
+    def bs_call_delta(self,S, K, T, sigma):
+        if T <= 0 or sigma <= 0:
+            return 0.5  # flat guess
+        d1 = (log(S / K) + 0.5 * sigma ** 2 * T) / (sigma * sqrt(T))
+        return self.norm_cdf(d1)
+    
+    def norm_cdf(self,x: float) -> float:
+        # Standard normal CDF using error function
+        return 0.5 * (1 + erf(x / sqrt(2)))
+
+    def black_scholes_price(self,S: float, K: float, T: float, sigma: float)-> float:
+        if T == 0 or sigma == 0:
+            return max(0.0, S - K) 
+
+        d1 = (log(S / K) + (0.06 + 0.5 * sigma**2) * T) / (sigma * sqrt(T))
+        d2 = d1 - sigma * sqrt(T)
+
+        return S * self.norm_cdf(d1) - K * exp(-0.06 * T) * self.norm_cdf(d2)
+        
+    def implied_volatility(self,
+        market_price: float,
+        S: float, #volkPrice
+        K: float, #strike
+        T: float, #TTE
+        tol: float = 1e-6,
+        max_iterations: int = 100
+    ) -> float:
+        # Use binary search between 0.0001 and 5.0 vol
+        low = 0.0001
+        high = 5.0
+        for i in range(max_iterations):
+            mid = (low + high) / 2
+            price = self.black_scholes_price(S, K, T, mid)
+
+            if abs(price - market_price) < tol:
+                return mid
+            elif price > market_price:
+                high = mid
+            else:
+                low = mid
+        return (low + high) / 2  # best guess
+
+    
     def get_mid_price(self, product, order_depth, window_size=3):
         strategy = self.product_params['valuation_strategy'][product]
         #print(strategy)
@@ -1157,8 +1268,9 @@ class Trader:
         returns = []
         prev_price = price_history[0]
         for price in list(price_history)[1:]:
-            returns.append(math.log(price / prev_price))
-            prev_price = price
+            if price & prev_price:
+                returns.append(math.log(price / prev_price))
+                prev_price = price
             
         if len(returns) < 1:
             return 0
